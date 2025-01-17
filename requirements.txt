@@ -1,0 +1,5 @@
+aiogram
+gigachat
+soundfile
+kandinskylib
+gigachat
