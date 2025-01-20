@@ -1,8 +1,9 @@
 import random
 from typing import List
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import Message
+from gigachat import GigaChat
 from app.api.dao import UsersDAO, RecipesDAO
 from app.api.middleware import AuthMiddleware
 from app.dao.session_maker import session_manager
@@ -11,10 +12,15 @@ from app.api.schemas import GetRecipeDB, GetUserDB, UserIDDB, AddRecipeDB
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
-from utils import find_similar_recipes, create_tfidf_vectors
+from .utils import find_similar_recipes, create_tfidf_vectors
+from app.config import GigaChatKey
+from gigachat.models import Chat, Messages, MessagesRole
 
 r_user = Router()
 r_user.message.middleware(AuthMiddleware())
+
+class Payload(StatesGroup):
+    payload = State()
 
 command_list_message = \
 '''
@@ -104,6 +110,8 @@ async def get_random_recipe(message: Message, session: AsyncSession, user: User)
 @r_user.message(Command("privacy"))
 @session_manager.connection()
 async def change_privace(message: Message, session: AsyncSession, user: User):
+    user = await UsersDAO.find_by_ids(session, [user.id])
+    user = user[0]
     user.private = not user.private
     await session.commit()
     await message.answer(f"Ваша приватность изменена на {user.private}")
@@ -111,7 +119,7 @@ async def change_privace(message: Message, session: AsyncSession, user: User):
 @r_user.message(Command("find"))
 @session_manager.connection()
 async def name_menu(message:Message, session: AsyncSession, user: User):
-    recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session, GetRecipeDB(user_id=user.id))
+    recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session, user_id=user.id)
     tfidf_matrix, vectorizer = create_tfidf_vectors(recipes)
 
     msg = message.text.split(maxsplit=1)
@@ -121,3 +129,34 @@ async def name_menu(message:Message, session: AsyncSession, user: User):
             await message.reply(str(recipe))
     else:
         await message.reply("Укажите ингредиент после команды /find.")
+
+# ТЕКСТ | Отправляется в диалог с GigaChat
+@r_user.message(Command("giga"))
+async def handle_text(message: Message, state:FSMContext):
+    await state.set_state(Payload.payload)
+    await state.update_data(payload=Chat(
+        messages=[
+            Messages(
+                role=MessagesRole.SYSTEM,
+                content="Ты профессиональный повар, который готов посоветовать множестнов рецептов"
+            )
+        ],
+        temperature=0.7,
+        max_tokens=100,
+    ))
+    await message.answer("Чем могу помочь?")
+
+@r_user.message(Payload.payload)
+async def handle_giga(message: Message, state:FSMContext):
+    if message.text.strip().lower().startswith('привет'):
+            await message.answer(f"Приветствую тебя и желаю приятной готовки!")
+    else:
+        with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
+            data = await state.get_data()
+            payload = data["payload"]
+            
+            payload.messages.append(Messages(role=MessagesRole.USER, content=message.text))
+            response = giga.chat(payload)
+            payload.messages.append(response.choices[0].message)
+            await state.update_data(payload=payload)
+            print("Bot: ", response.choices[0].message.content)

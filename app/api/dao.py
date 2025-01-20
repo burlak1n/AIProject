@@ -1,5 +1,5 @@
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from app.dao.base import BaseDAO
 from app.api.models import User, Recipe
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,8 +15,12 @@ class RecipesDAO(BaseDAO):
         # Найти запись по ID
         logger.info(f"Поиск чужих {cls.model.__name__}s; От ID: {user_id}")
         try:
-            query = select(cls.model).where()
-            query = select(cls.model).filter_by(user_id=user_id)
+            query = select(cls.model).filter(
+                and_(
+                    cls.model.user_id != user_id,
+                    cls.model.user.privacy != True
+                )
+            )
             result = await session.execute(query)
             record = result.scalar_one_or_none()
             if record:

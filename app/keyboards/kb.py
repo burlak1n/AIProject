@@ -11,7 +11,10 @@ main_kb = ReplyKeyboardMarkup(
                 KeyboardButton(text="/random_recipe"),
                 KeyboardButton(text="/image"),
                 KeyboardButton(text="/find"),
-            ]
+            ],
+            [
+                KeyboardButton(text="/privacy"),
+            ],
         ],
         resize_keyboard=True,
     )

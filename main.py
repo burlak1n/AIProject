@@ -27,8 +27,6 @@ from app.dao.session_maker import session_manager
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import GigaChatKey
-from gigachat import GigaChat
 
 
 # GigaChat api автоматическая транскрибация. Можно ли отправить голос?
@@ -72,19 +70,7 @@ async def register_user(message: Message, session: AsyncSession, state: FSMConte
     await UsersDAO.add(session, AddUserDB(telegram_id=m.id, username=m.username, fullname=m.full_name, email=email))
     await message.answer(f"{hello_message}", reply_markup=main_kb)
 
-# ТЕКСТ | Отправляется в диалог с GigaChat
-# @router_main.message(F.text)
-# async def handle_text(message: Message):
-#     if message.text.strip().lower().startswith('привет'):
-#         await message.answer(f"Приветствую тебя и желаю приятной готовки!")
-#     elif '713560' in message.text.strip().lower():
-#         recipe = ut.load_recipes(True)
-#         await message.answer(f"Ты ввёл секретный код! Держи рецепт в подарок {recipe[0]}")
-#     else:
-#         with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
-#             response = giga.chat(message.text)
-#             await message.answer(f"GigaChat: {response.choices[0].message.content}")
-#             print()
+
 
 # ДОКУМЕНТ | Загрузка csv, json для добавления рецепта
 # @router_main.message(F.document)
