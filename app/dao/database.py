@@ -4,9 +4,9 @@ from sqlalchemy.orm import DeclarativeBase, declared_attr, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from typing import Annotated, Any, Dict
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine, AsyncSession
-from app.config import database_url
+from app.config import DB_URL
 
-engine = create_async_engine(url=database_url)
+engine = create_async_engine(url=DB_URL)
 async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 # Аннотации

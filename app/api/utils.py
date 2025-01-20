@@ -54,7 +54,7 @@ def create_tfidf_vectors(recipes):
     # Объединяем ингредиенты и шаги каждого рецепта в одну строку
     descriptions = []
     for recipe in recipes:
-        description = ', '.join(recipe['ingredients']) + ' | ' + ' '.join(recipe['steps'])
+        description = ', '.join(recipe) + ' | ' + ' '.join(recipe['steps'])
         descriptions.append(description)
     
     tfidf_vectorizer = TfidfVectorizer()
@@ -80,6 +80,3 @@ def find_similar_recipes(query, recipes, tfidf_matrix, vectorizer):
     similar_recipes = [recipes[i] for i in indices]
     
     return similar_recipes
-
-recipes = load_recipes_from_json('db.json')
-tfidf_matrix, vectorizer = create_tfidf_vectors(recipes)

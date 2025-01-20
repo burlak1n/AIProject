@@ -3,3 +3,4 @@ gigachat
 soundfile
 kandinskylib
 gigachat
+speech_recognition
