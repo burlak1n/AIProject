@@ -19,7 +19,6 @@ from app.dao.session_maker import session_manager
 from sqlalchemy.ext.asyncio import AsyncSession
 
 hello_message = "Привет! Я твой помощник в мире кулинарии.\n"
-# Инициализация бота
 router_main = Router()
 
 class Image(StatesGroup):
