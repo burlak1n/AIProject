@@ -1,33 +1,28 @@
-import io
-import multiprocessing
-import os
-import uuid
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import Message, FSInputFile
+from aiogram.types import Message
 from aiogram.enums import ChatAction
 from aiogram.filters import CommandStart, Command
 import asyncio
 import aiofiles
 import json
 import csv
+
+from loguru import logger
 from app.api.dao import UsersDAO
 from app.api.models import User
-import soundfile as sf
-from speech_recognition import Recognizer, AudioFile
 
-from app.create_bot import bot, dp
+from app.create_bot import bot, dp, scheduler
 from app.keyboards.kb import main_kb
 # import app.api.utils as ut
 from app.api.router import r_user as router_recipes
+from app.api.router import scheduled_task
 # from app.schedule.schedule import start_scheduler
 from app.api.schemas import GetUserDB, AddUserDB
 from app.dao.session_maker import session_manager
 
 from sqlalchemy.ext.asyncio import AsyncSession
-
-
 
 # GigaChat api автоматическая транскрибация. Можно ли отправить голос?
 # Улучшить связь между пользователем и рецептом (Блог и аавтор)
@@ -70,62 +65,16 @@ async def register_user(message: Message, session: AsyncSession, state: FSMConte
     await UsersDAO.add(session, AddUserDB(telegram_id=m.id, username=m.username, fullname=m.full_name, email=email))
     await message.answer(f"{hello_message}", reply_markup=main_kb)
 
+async def on_startup():
+    logger.info("Starting bot...")
+    scheduler.add_job(scheduled_task, "interval", days=1)  # Schedule every 10 seconds
+    scheduler.start()
 
-
-# ДОКУМЕНТ | Загрузка csv, json для добавления рецепта
-# @router_main.message(F.document)
-# async def handle_document(message: Message, bot: Bot):
-#     file_name = f"./docs/{message.document.file_name}"
-#     print(file_name)
-#     try:
-#         await bot.download(message.document, file_name)
-        
-#         if file_name.endswith(('.csv', '.json')):
-#             async with aiofiles.open(file_name, mode='r', encoding='utf-8') as file:
-#                 data = await file.read()
-
-#             if file_name.endswith('.csv'):
-#                 reader = csv.DictReader(io.StringIO(data), fieldnames=['title', 'ingredients', 'steps'], delimiter=";")
-#                 rows = list(reader)
-#                 for row in rows:
-#                     row['ingredients'] = row['ingredients'].split()
-#                     row['steps'] = [row['steps']]
-#                     ut.save_recipe(row)
-#             elif file_name.endswith('.json'):
-#                 recipes = json.loads(data)
-#                 for recipe in recipes:
-#                     ut.save_recipe(recipe)
-                    
-#             await message.answer("Файл загружен успешно!")
-#         else:
-#             await message.answer("Поддерживаются только файлы формата CSV и JSON.")
-#     except Exception as e:
-#         await message.answer(f"Произошла ошибка при загрузке файла: {e}")
-
-# Транскрибация, отправлять в диалог с GigaChat
-# @router_main.message(F.voice)
-# async def handle_audio(message: Message):
-#     voice_file_id = message.voice.file_id
-#     filename = f"{voice_file_id}"
-#     await bot.download(voice_file_id, destination=f'{filename}.ogg')
-
-#     data, samplerate = sf.read(f'{filename}.ogg')
-#     sf.write(f'{filename}.wav', data, samplerate)
-
-#     os.remove(f'{filename}.ogg')
-
-#     recognizer = Recognizer()
-    
-#     with AudioFile(f'{filename}.wav') as source:
-#         audio_data = recognizer.record(source)
-
-#     try:
-#         text = recognizer.recognize_google(audio_data, language="ru-RU")  # Используйте нужный язык
-#         await message.reply(f"Текст аудиосообщения: {text}")
-#     except Exception as e:
-#         await message.reply(f"Произошла ошибка при обработке аудиосообщения: {e}")
-    
-#     os.remove(f'{filename}.wav')
+async def on_shutdown():
+    logger.info("Shutting down...")
+    scheduler.shutdown()
+    await dp.storage.close()
+    await bot.close()
 
 async def main():
     dp.include_routers(
@@ -133,10 +82,12 @@ async def main():
         router_recipes
     )
 
+    dp.startup.register(on_startup)
+    dp.shutdown.register(on_shutdown)
+
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     # scheduler = multiprocessing.Process(target=start_scheduler())
     # scheduler.start()
-
     asyncio.run(main())

@@ -4,9 +4,11 @@ from app.config import TOKEN
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # Базовое логирование
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
 dp = Dispatcher()
+scheduler = AsyncIOScheduler()

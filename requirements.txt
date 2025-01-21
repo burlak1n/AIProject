@@ -4,3 +4,4 @@ soundfile
 kandinskylib
 gigachat
 speech_recognition
+apscheduler

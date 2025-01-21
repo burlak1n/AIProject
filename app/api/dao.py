@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from loguru import logger
 from sqlalchemy import and_, select
 from app.dao.base import BaseDAO
@@ -6,6 +7,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 class UsersDAO(BaseDAO):
     model = User
+
+    @classmethod
+    async def find_all_to_schedule(cls, session: AsyncSession):
+        logger.info(f"Поиск всех {cls.model.__name__}s, которым нужно прислать рассылку")
+        try:
+            now = datetime.now()
+            query = select(cls.model).filter(now-cls.model.updated_at > timedelta(days=1))
+            result = await session.execute(query)
+            records = result.scalars().all()
+            return records
+        except SQLAlchemyError as e:
+            logger.error(f"Ошибка при поиске всех {cls.model.__name__}s, которым нужно прислать рассылку: {e}")
+            raise
 
 class RecipesDAO(BaseDAO):
     model = Recipe
@@ -22,12 +36,10 @@ class RecipesDAO(BaseDAO):
                 )
             )
             result = await session.execute(query)
-            record = result.scalar_one_or_none()
-            if record:
-                logger.info(f"Запись с ID {user_id} найдена.")
-            else:
-                logger.info(f"Запись с ID {user_id} не найдена.")
-            return record
+            records = result.scalars().all()
+            logger.info(f"Найдено {len(records)} записей.")
+
+            return records
         except SQLAlchemyError as e:
-            logger.error(f"Ошибка при поиске записи с ID {user_id}: {e}")
+            logger.error(f"Ошибка при поиске чужих рецептов от ID {user_id}: {e}")
             raise

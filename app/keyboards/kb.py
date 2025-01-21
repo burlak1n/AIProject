@@ -14,6 +14,7 @@ main_kb = ReplyKeyboardMarkup(
             ],
             [
                 KeyboardButton(text="/privacy"),
+                KeyboardButton(text="/giga"),
             ],
         ],
         resize_keyboard=True,

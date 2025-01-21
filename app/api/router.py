@@ -1,3 +1,6 @@
+import asyncio
+from datetime import datetime
+import os
 import random
 from typing import List
 from aiogram import F, Router
@@ -15,6 +18,9 @@ from aiogram.fsm.context import FSMContext
 from .utils import find_similar_recipes, create_tfidf_vectors
 from app.config import GigaChatKey
 from gigachat.models import Chat, Messages, MessagesRole
+from app.create_bot import bot
+import soundfile as sf
+from speech_recognition import Recognizer, AudioFile
 
 r_user = Router()
 r_user.message.middleware(AuthMiddleware())
@@ -83,7 +89,7 @@ async def finish_adding_recipe(message: Message, state: FSMContext, session: Asy
     await message.answer(f"Рецепт '{recipe.title}' успешно добавлен!")
     await state.clear()
 
-@r_user.message(Command("random_recipe"))
+@r_user.message(Command("random_me"))
 @session_manager.connection()
 async def get_random_recipe(message: Message, session: AsyncSession, user: User):
     recipes: List[Recipe] = await RecipesDAO.find_all(session, GetRecipeDB(user_id=user.id))
@@ -96,7 +102,7 @@ async def get_random_recipe(message: Message, session: AsyncSession, user: User)
 
 @r_user.message(Command("recipes"))
 @session_manager.connection()
-async def get_random_recipe(message: Message, session: AsyncSession, user: User):
+async def get_recipes(message: Message, session: AsyncSession, user: User):
     recipes: List[Recipe] = await RecipesDAO.find_all(session, GetRecipeDB(user_id=user.id))
     if not recipes:
         await message.answer("У вас еще нет рецептов! Добавьте их с помощью команды /add_recipe")
@@ -120,17 +126,27 @@ async def change_privace(message: Message, session: AsyncSession, user: User):
 @session_manager.connection()
 async def name_menu(message:Message, session: AsyncSession, user: User):
     recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session, user_id=user.id)
-    tfidf_matrix, vectorizer = create_tfidf_vectors(recipes)
+    tfidf_matrix, vectorizer = await create_tfidf_vectors(recipes)
 
     msg = message.text.split(maxsplit=1)
     if len(msg) > 1:
         print(msg[1])
-        for recipe in find_similar_recipes(msg[1], recipes, tfidf_matrix, vectorizer):
+        for recipe in await find_similar_recipes(msg[1], recipes, tfidf_matrix, vectorizer):
             await message.reply(str(recipe))
     else:
         await message.reply("Укажите ингредиент после команды /find.")
 
-# ТЕКСТ | Отправляется в диалог с GigaChat
+@r_user.message(Command("random"))
+@session_manager.connection()
+async def random_others_recipe(message:Message, session: AsyncSession, user: User):
+    recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session, user_id=user.id)
+    if not recipes:
+        await message.answer("В Базе пока нет рецептов!")
+        return
+    recipe = random.choice(recipes)
+    await message.answer(str(recipe))
+
+# ТЕКСТ | GigaChat
 @r_user.message(Command("giga"))
 async def handle_text(message: Message, state:FSMContext):
     await state.set_state(Payload.payload)
@@ -145,12 +161,26 @@ async def handle_text(message: Message, state:FSMContext):
         max_tokens=100,
     ))
     await message.answer("Чем могу помочь?")
+            
+# ГОЛОСОВОЕ | GigaChat
+@r_user.message(F.voice, Payload.payload)
+async def handle_audio(message: Message, state:FSMContext):
+    voice_file_id = message.voice.file_id
+    filename = f"{voice_file_id}"
+    await bot.download(voice_file_id, destination=f'{filename}.ogg')
 
-@r_user.message(Payload.payload)
-async def handle_giga(message: Message, state:FSMContext):
-    if message.text.strip().lower().startswith('привет'):
-            await message.answer(f"Приветствую тебя и желаю приятной готовки!")
-    else:
+    data, samplerate = sf.read(f'{filename}.ogg')
+    sf.write(f'{filename}.wav', data, samplerate)
+
+    os.remove(f'{filename}.ogg')
+
+    recognizer = Recognizer()
+    
+    with AudioFile(f'{filename}.wav') as source:
+        audio_data = recognizer.record(source)
+
+    try:
+        text = recognizer.recognize_google(audio_data, language="ru-RU")  # Используйте нужный язык
         with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
             data = await state.get_data()
             payload = data["payload"]
@@ -160,3 +190,36 @@ async def handle_giga(message: Message, state:FSMContext):
             payload.messages.append(response.choices[0].message)
             await state.update_data(payload=payload)
             print("Bot: ", response.choices[0].message.content)
+        await message.reply(f"Текст аудиосообщения: {text}")
+    except Exception as e:
+        await message.reply(f"Произошла ошибка при обработке аудиосообщения: {e}")
+    
+    os.remove(f'{filename}.wav')
+
+@r_user.message(Payload.payload)
+async def handle_giga(message: Message, state:FSMContext):
+    if message.text.strip().lower().startswith('привет'):
+            await message.answer(f"Приветствую тебя и желаю приятной готовки!")
+    else:
+        await bot.send_chat_action(message.chat.id, "typing")
+        with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
+            data = await state.get_data()
+            payload = data["payload"]
+            
+            payload.messages.append(Messages(role=MessagesRole.USER, content=message.text))
+            response = giga.chat(payload)
+            payload.messages.append(response.choices[0].message)
+            await state.update_data(payload=payload)
+            await message.answer(f"Bot: {response.choices[0].message.content}")
+
+@session_manager.connection()
+async def scheduled_task(session:AsyncSession):
+    users: List[User] = await UsersDAO.find_all(session, None)
+    with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
+        response = giga.chat("Сгенерируй короткое, ежедневное, мотивирующее сообщение для начинающих поваров")
+        for user in users:
+            await bot.send_message(user.id, text=response.choices[0].message.content)
+
+            user.updated_at = datetime.now()
+            await session.commit()
+            
