@@ -24,9 +24,9 @@ router_main = Router()
 class RegisterUser(StatesGroup):
     started = State()
 
-@router_main.message(CommandStart())
+@dp.message(CommandStart())
 @session_manager.connection()
-async def cmd_start(message: Message, session: AsyncSession, state: FSMContext):
+async def start(message: Message, session: AsyncSession, state: FSMContext):
     m = message.from_user
     user: User = await UsersDAO.find_one_or_none(session, GetUserDB(telegram_id=m.id))
     if not user:
@@ -35,7 +35,7 @@ async def cmd_start(message: Message, session: AsyncSession, state: FSMContext):
         return
     await message.answer(f"{hello_message}", reply_markup=main_kb)
 
-@router_main.message(RegisterUser.started)
+@dp.message(RegisterUser.started)
 @session_manager.connection()
 async def register_user(message: Message, session: AsyncSession, state: FSMContext):
     await state.clear()
@@ -57,7 +57,6 @@ async def on_shutdown():
 
 async def main():
     dp.include_routers(
-        router_main,
         router_recipes
     )
 

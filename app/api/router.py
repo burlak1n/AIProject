@@ -55,12 +55,12 @@ class Image(StatesGroup):
     image = State()
     
 @r_user.message(Command("image"))
-async def name_menu(message:Message, state: FSMContext):
+async def kandin_image(message:Message, state: FSMContext):
     await state.set_state(Image.image)
     await message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
 
 @r_user.message(Image.image)
-async def get_name(message:Message, state: FSMContext):
+async def kandin_gen_image(message:Message, state: FSMContext):
     await state.update_data(image=message.text)
     data = await state.get_data()
 
@@ -151,7 +151,7 @@ async def change_privace(message: Message, session: AsyncSession, user: User):
 
 @r_user.message(Command("find"))
 @session_manager.connection()
-async def name_menu(message:Message, session: AsyncSession, user: User):
+async def find_recipes(message:Message, session: AsyncSession, user: User):
     recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session, user_id=user.id)
     tfidf_matrix, vectorizer = await create_tfidf_vectors(recipes)
 
