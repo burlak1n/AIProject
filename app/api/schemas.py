@@ -1,6 +1,5 @@
 from typing import List
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
-from .models import User
 
 class MyBaseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -18,7 +17,7 @@ class UserIDDB(MyBaseModel):
 
 class GetRecipeDB(MyBaseModel):
     user_id: int = Field(description="ID пользователя")
-    
+
 class AddRecipeDB(GetRecipeDB):
     title: str = Field(description="Название рецепта")
     ingridiends: List[str] = Field(description="Шаги")

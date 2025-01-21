@@ -2,12 +2,8 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message
-from aiogram.enums import ChatAction
 from aiogram.filters import CommandStart, Command
 import asyncio
-import aiofiles
-import json
-import csv
 
 from loguru import logger
 from app.api.dao import UsersDAO
@@ -15,10 +11,8 @@ from app.api.models import User
 
 from app.create_bot import bot, dp, scheduler
 from app.keyboards.kb import main_kb
-# import app.api.utils as ut
 from app.api.router import r_user as router_recipes
 from app.api.router import scheduled_task
-# from app.schedule.schedule import start_scheduler
 from app.api.schemas import GetUserDB, AddUserDB
 from app.dao.session_maker import session_manager
 
@@ -40,10 +34,10 @@ class Image(StatesGroup):
 class RegisterUser(StatesGroup):
     started = State()
 
-# @router_main.message(Command("image"))
-# async def name_menu(message:Message, state: FSMContext):
-#     await state.set_state(Image.image)
-#     await message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
+@router_main.message(Command("image"))
+async def name_menu(message:Message, state: FSMContext):
+    await state.set_state(Image.image)
+    await message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
 
 @router_main.message(CommandStart())
 @session_manager.connection()
@@ -88,6 +82,4 @@ async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    # scheduler = multiprocessing.Process(target=start_scheduler())
-    # scheduler.start()
     asyncio.run(main())

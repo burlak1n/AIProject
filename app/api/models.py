@@ -2,7 +2,7 @@ from typing import List
 from app.dao.base import Base
 from app.dao.database import uniq_str_an
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import ARRAY, Boolean, ForeignKey, String, JSON
+from sqlalchemy import Boolean, ForeignKey, JSON
 
 class User(Base):
     """
