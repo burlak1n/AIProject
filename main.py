@@ -21,16 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 hello_message = "Привет! Я твой помощник в мире кулинарии.\n"
 router_main = Router()
 
-class Image(StatesGroup):
-    image = State()
-
 class RegisterUser(StatesGroup):
     started = State()
-
-@router_main.message(Command("image"))
-async def name_menu(message:Message, state: FSMContext):
-    await state.set_state(Image.image)
-    await message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
 
 @router_main.message(CommandStart())
 @session_manager.connection()

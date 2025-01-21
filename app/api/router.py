@@ -2,9 +2,10 @@ from datetime import datetime
 import os
 import random
 from typing import List
+import uuid
 from aiogram import F, Router
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile
 from gigachat import GigaChat
 from app.api.dao import UsersDAO, RecipesDAO
 from app.api.middleware import AuthMiddleware
@@ -15,11 +16,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from .utils import find_similar_recipes, create_tfidf_vectors
-from app.config import GigaChatKey
+from app.config import GigaChatKey, kandinsky_api_key, kandinsky_secret_key
 from gigachat.models import Chat, Messages, MessagesRole
 from app.create_bot import bot
 import soundfile as sf
 from speech_recognition import Recognizer, AudioFile
+from kandinskylib import Kandinsky
 
 r_user = Router()
 r_user.message.middleware(AuthMiddleware())
@@ -48,7 +50,33 @@ class RecipeStates(StatesGroup):
     waiting_for_ingredients = State()
     waiting_for_steps = State()
 
-# Команда /help
+
+class Image(StatesGroup):
+    image = State()
+    
+@r_user.message(Command("image"))
+async def name_menu(message:Message, state: FSMContext):
+    await state.set_state(Image.image)
+    await message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
+
+@r_user.message(Image.image)
+async def get_name(message:Message, state: FSMContext):
+    await state.update_data(image=message.text)
+    data = await state.get_data()
+
+    client = Kandinsky(kandinsky_api_key, kandinsky_secret_key)
+    p = f"./image/{uuid.uuid4()}.jpg"
+    _ = client.generate_image(
+        prompt = data['image'],
+        scale="1:1",
+        style="UHD",
+        path=p
+    )
+
+    await message.answer_photo(FSInputFile(p))
+    os.remove(p)
+    await state.clear()
+
 @r_user.message(Command("help"))
 async def cmd_help(message: Message):
     await message.answer(command_list_message)
@@ -221,4 +249,3 @@ async def scheduled_task(session:AsyncSession):
 
             user.updated_at = datetime.now()
             await session.commit()
-            
