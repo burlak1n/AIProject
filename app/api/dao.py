@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import List
 from loguru import logger
 from sqlalchemy import and_, select
 from app.dao.base import BaseDAO
@@ -29,16 +30,21 @@ class RecipesDAO(BaseDAO):
         # Найти запись по ID
         logger.info(f"Поиск чужих {cls.model.__name__}s; От ID: {user_id}")
         try:
-            query = select(cls.model).filter(
-                and_(
-                    cls.model.user_id != user_id,
-                    cls.model.user.privacy != True
-                )
-            )
+            query = select(User).filter(User.private==False)
+            result = await session.execute(query)
+            records: List[User] = result.scalars().all()
+            if not records:
+                logger.info(f"Не найдено записей пользователей с отключенной приватностью")
+                return
+            user_ids = [user.id for user in records]
+            if user_id not in user_ids:
+                user_ids.append(user_id)
+            logger.info(f"{user_ids}")
+            query = select(cls.model).filter(~cls.model.user_id.in_(user_ids))
             result = await session.execute(query)
             records = result.scalars().all()
             logger.info(f"Найдено {len(records)} записей.")
-
+            
             return records
         except SQLAlchemyError as e:
             logger.error(f"Ошибка при поиске чужих рецептов от ID {user_id}: {e}")

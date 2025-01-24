@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import CommandStart
 import asyncio
 
 from loguru import logger
@@ -46,14 +46,13 @@ async def register_user(message: Message, session: AsyncSession, state: FSMConte
 
 async def on_startup():
     logger.info("Starting bot...")
-    scheduler.add_job(scheduled_task, "interval", days=1)  # Schedule every 10 seconds
+    scheduler.add_job(scheduled_task, "interval", minutes=3)
     scheduler.start()
 
 async def on_shutdown():
     logger.info("Shutting down...")
     scheduler.shutdown()
     await dp.storage.close()
-    await bot.close()
 
 async def main():
     dp.include_routers(
