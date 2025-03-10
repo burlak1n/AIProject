@@ -9,3 +9,4 @@ pydantic-settings
 loguru
 sqlalchemy
 aiosqlite
+alembic
