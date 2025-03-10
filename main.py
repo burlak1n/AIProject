@@ -31,7 +31,7 @@ async def start(message: Message, session: AsyncSession, state: FSMContext):
     user: User = await UsersDAO.find_one_or_none(session, GetUserDB(telegram_id=m.id))
     if not user:
         await state.set_state(RegisterUser.started)
-        await message.answer("Для начала введите свою почту")
+        await message.answer("Для начала напишите, как к вам обращаться")
         return
     await message.answer(f"{hello_message}", reply_markup=main_kb)
 
