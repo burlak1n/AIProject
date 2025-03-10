@@ -2,6 +2,5 @@ aiogram
 gigachat
 soundfile
 kandinskylib
-gigachat
-speech_recognition
+SpeechRecognition
 apscheduler
