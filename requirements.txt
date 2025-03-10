@@ -4,3 +4,5 @@ soundfile
 kandinskylib
 SpeechRecognition
 apscheduler
+pydantic
+pydantic-settings
