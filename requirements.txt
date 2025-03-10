@@ -6,3 +6,6 @@ SpeechRecognition
 apscheduler
 pydantic
 pydantic-settings
+loguru
+sqlalchemy
+aiosqlite
