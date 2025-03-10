@@ -40,8 +40,8 @@ async def start(message: Message, session: AsyncSession, state: FSMContext):
 async def register_user(message: Message, session: AsyncSession, state: FSMContext):
     await state.clear()
     m = message.from_user
-    email = message.text
-    await UsersDAO.add(session, AddUserDB(telegram_id=m.id, username=m.username, fullname=m.full_name, email=email))
+    name = message.text
+    await UsersDAO.add(session, AddUserDB(telegram_id=m.id, username=m.username, fullname=m.full_name, name=name))
     await message.answer(f"{hello_message}", reply_markup=main_kb)
 
 async def on_startup():

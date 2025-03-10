@@ -11,7 +11,7 @@ class User(Base):
     telegram_id: Mapped[int] = mapped_column(unique=True, nullable=False)
     username: Mapped[uniq_str_an]
     fullname: Mapped[uniq_str_an]
-    email: Mapped[uniq_str_an]
+    name: Mapped[str]
     private: Mapped[bool] = mapped_column(Boolean, default=False)
 
     def __repr__(self):
