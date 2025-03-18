@@ -1,20 +1,25 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-main_kb = ReplyKeyboardMarkup(
-        keyboard=[
+main_kb = InlineKeyboardMarkup(
+        inline_keyboard=[
             [
-                KeyboardButton(text="/help"),
-                KeyboardButton(text="/add_recipe"),
-                KeyboardButton(text="/recipes"),
+                InlineKeyboardButton(text="Рецепты из холодильника", callback_data="fridge"),
+                InlineKeyboardButton(text="Определить блюдо", callback_data="food"),
+                InlineKeyboardButton(text="Индивидуальные предпочтения", callback_data="preferences"),
             ],
             [
-                KeyboardButton(text="/random_recipe"),
-                KeyboardButton(text="/image"),
-                KeyboardButton(text="/find"),
+                InlineKeyboardButton(text="Помощь", callback_data="help"),
+                InlineKeyboardButton(text="Добавить рецепт", callback_data="add_recipe"),
+                InlineKeyboardButton(text="Рецепты", callback_data="recipes"),
             ],
             [
-                KeyboardButton(text="/privacy"),
-                KeyboardButton(text="/giga"),
+                InlineKeyboardButton(text="Случайный рецепт", callback_data="random_recipe"),
+                InlineKeyboardButton(text="Сгенерировать фото", callback_data="image"),
+                InlineKeyboardButton(text="Найти рецепт", callback_data="find"),
+            ],
+            [
+                InlineKeyboardButton(text="Конфиденциальность", callback_data="privacy"),
+                InlineKeyboardButton(text="Giga", callback_data="giga"),
             ],
         ],
         resize_keyboard=True,

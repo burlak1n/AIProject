@@ -1,4 +1,6 @@
+import base64
 from typing import List
+from app.config import MAX_MESSAGE_LENGTH
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -38,3 +40,13 @@ async def find_similar_recipes(query, recipes, tfidf_matrix, vectorizer):
     similar_recipes = [recipes[i] for i in indices]
     
     return similar_recipes
+
+def truncate_message(text: str) -> str:
+    if len(text) > MAX_MESSAGE_LENGTH:
+        return text[:MAX_MESSAGE_LENGTH - 3] + "..."
+    return text
+
+# -------------------- Преобразование изображения в base64 --------------------
+def image_bytes_to_base64(image_bytes: bytes) -> str:
+    return base64.b64encode(image_bytes).decode("utf-8")
+    

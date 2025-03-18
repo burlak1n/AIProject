@@ -5,7 +5,7 @@ from typing import List
 import uuid
 from aiogram import F, Router
 from aiogram.filters import Command
-from aiogram.types import Message, FSInputFile
+from aiogram.types import Message, FSInputFile, CallbackQuery
 from gigachat import GigaChat
 from loguru import logger
 from app.api.dao import UsersDAO, RecipesDAO
@@ -55,10 +55,10 @@ class Payload(StatesGroup):
 class Image(StatesGroup):
     image = State()
     
-@r_user.message(Command("image"))
-async def kandin_image(message:Message, state: FSMContext):
+@r_user.callback_query(F.data == "image")
+async def kandin_image(callback: CallbackQuery, state: FSMContext):
     await state.set_state(Image.image)
-    await message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
+    await callback.message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
 
 @r_user.message(Image.image)
 async def kandin_gen_image(message:Message, state: FSMContext):
@@ -78,15 +78,15 @@ async def kandin_gen_image(message:Message, state: FSMContext):
     os.remove(p)
     await state.clear()
 
-@r_user.message(Command("help"))
-async def cmd_help(message: Message):
-    await message.answer(command_list_message)
+@r_user.callback_query(F.data == "help")
+async def cmd_help(callback: CallbackQuery):
+    await callback.message.answer(command_list_message)
 
 # Команда /add_recipe
-@r_user.message(Command("add_recipe"))
-async def add_recipe(message: Message, state: FSMContext):
+@r_user.callback_query(F.data == "add_recipe")
+async def add_recipe(callback: CallbackQuery, state: FSMContext):
     await state.set_state(RecipeStates.waiting_for_title)
-    await message.answer("Введите название рецепта:")
+    await callback.message.answer("Введите название рецепта:")
 
 # Ожидание названия рецепта
 @r_user.message(RecipeStates.waiting_for_title)
@@ -117,66 +117,66 @@ async def finish_adding_recipe(message: Message, state: FSMContext, session: Asy
     await message.answer(f"Рецепт '{recipe.title}' успешно добавлен!")
     await state.clear()
 
-@r_user.message(Command("random_me"))
+@r_user.callback_query(F.data == "random_me")
 @session_manager.connection()
-async def get_random_recipe(message: Message, session: AsyncSession, user: User):
+async def get_random_recipe(callback: CallbackQuery, session: AsyncSession, user: User):
     recipes: List[Recipe] = await RecipesDAO.find_all(session, GetRecipeDB(user_id=user.id))
     if not recipes:
-        await message.answer("У вас еще нет рецептов. Добавьте их с помощью команды /add_recipe.")
+        await callback.message.answer("У вас еще нет рецептов. Добавьте их с помощью команды /add_recipe.")
         return 
     
     recipe = random.choice(recipes)
-    await message.answer(str(recipe))
+    await callback.message.answer(str(recipe))
 
-@r_user.message(Command("recipes"))
+@r_user.callback_query(F.data == "recipes")
 @session_manager.connection()
-async def get_recipes(message: Message, session: AsyncSession, user: User):
+async def get_recipes(callback: CallbackQuery, session: AsyncSession, user: User):
     recipes: List[Recipe] = await RecipesDAO.find_all(session, GetRecipeDB(user_id=user.id))
     if not recipes:
-        await message.answer("У вас еще нет рецептов! Добавьте их с помощью команды /add_recipe")
+        await callback.message.answer("У вас еще нет рецептов! Добавьте их с помощью команды /add_recipe")
         return
 
-    await message.answer("Ваши рецепты:")
+    await callback.message.answer("Ваши рецепты:")
 
     for recipe in recipes:
-        await message.answer(str(recipe))
+        await callback.message.answer(str(recipe))
 
-@r_user.message(Command("privacy"))
+@r_user.callback_query(F.data == "privacy")
 @session_manager.connection()
-async def change_privace(message: Message, session: AsyncSession, user: User):
+async def change_privace(callback: CallbackQuery, session: AsyncSession, user: User):
     user = await UsersDAO.find_by_ids(session, [user.id])
     user = user[0]
     user.private = not user.private
     await session.commit()
-    await message.answer(f"Ваша приватность изменена на {user.private}")
+    await callback.message.answer(f"Ваша приватность изменена на {user.private}")
 
-@r_user.message(Command("find"))
+@r_user.callback_query(F.data == "find")
 @session_manager.connection()
-async def find_recipes(message:Message, session: AsyncSession, user: User):
-    msg = message.text.split(maxsplit=1)
+async def find_recipes(callback: CallbackQuery, session: AsyncSession, user: User):
+    msg = callback.data.split(maxsplit=1)
     if len(msg) > 1:
         recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session=session, user_id=user.id)
         if not recipes:
-            await message.answer("В Базе пока нет рецептов!")
+            await callback.message.answer("В Базе пока нет рецептов!")
             return
         tfidf_matrix, vectorizer = await create_tfidf_vectors(recipes)
         for recipe in await find_similar_recipes(msg[1], recipes, tfidf_matrix, vectorizer):
-            await message.reply(str(recipe))
+            await callback.message.reply(str(recipe))
     else:
-        await message.reply("Укажите ингредиент после команды /find.")
+        await callback.message.reply("Укажите ингредиент после команды /find.")
 
-@r_user.message(Command("random"))
+@r_user.callback_query(F.data == "random")
 @session_manager.connection()
-async def random_others_recipe(message:Message, session: AsyncSession, user: User):
+async def random_others_recipe(callback: CallbackQuery, session: AsyncSession, user: User):
     recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session, user_id=user.id)
     if not recipes:
-        await message.answer("В Базе пока нет рецептов!")
+        await callback.message.answer("В Базе пока нет рецептов!")
         return
     recipe = random.choice(recipes)
-    await message.answer(str(recipe))
+    await callback.message.answer(str(recipe))
 
-@r_user.message(Command("giga"))
-async def handle_text(message: Message, state:FSMContext):
+@r_user.callback_query(F.data == "giga")
+async def handle_text(callback: CallbackQuery, state:FSMContext):
     await state.set_state(Payload.payload)
     await state.update_data(payload=Chat(
         messages=[
@@ -188,13 +188,13 @@ async def handle_text(message: Message, state:FSMContext):
         temperature=0.7,
         max_tokens=100,
     ))
-    await message.answer("Чем могу помочь?")
+    await callback.message.answer("Чем могу помочь?")
             
 # ГОЛОСОВОЕ | GigaChat
 @r_user.message(F.voice, Payload.payload)
-async def handle_audio(message: Message, state:FSMContext):
+async def handle_audio(callback: CallbackQuery, state:FSMContext):
     logger.info("handle_audio")
-    voice_file_id = message.voice.file_id
+    voice_file_id = callback.message.voice.file_id
     filename = f"data/{voice_file_id}"
     await bot.download(voice_file_id, destination=f'{filename}.ogg')
 
@@ -219,9 +219,9 @@ async def handle_audio(message: Message, state:FSMContext):
             response = giga.chat(payload)
             payload.messages.append(response.choices[0].message)
             await state.update_data(payload=payload)
-        await message.reply(response.choices[0].message.content)
+        await callback.message.reply(response.choices[0].message.content)
     except Exception as e:
-        await message.reply(f"Произошла ошибка при обработке аудиосообщения: {e}")
+        await callback.message.reply(f"Произошла ошибка при обработке аудиосообщения: {e}")
     
     os.remove(f'{filename}.wav')
 
