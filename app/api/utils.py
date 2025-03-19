@@ -4,6 +4,10 @@ from app.config import MAX_MESSAGE_LENGTH
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
+from gtts import gTTS
+import io
+import os
+import asyncio
 
 from app.api.models import Recipe
 
@@ -49,4 +53,23 @@ def truncate_message(text: str) -> str:
 # -------------------- Преобразование изображения в base64 --------------------
 def image_bytes_to_base64(image_bytes: bytes) -> str:
     return base64.b64encode(image_bytes).decode("utf-8")
-    
+
+async def text_to_speech(text: str, lang: str = 'ru') -> io.BytesIO:
+    """
+    Преобразует текст в голосовое сообщение
+    :param text: Текст для синтеза
+    :param lang: Язык синтеза (по умолчанию 'ru')
+    :return: BytesIO объект с аудио
+    """
+    try:
+        # Создаем временный файл
+        tts = gTTS(text=text, lang=lang, slow=False)
+        
+        # Используем BytesIO для хранения аудио в памяти
+        audio_bytes = io.BytesIO()
+        tts.write_to_fp(audio_bytes)
+        audio_bytes.seek(0)
+        
+        return audio_bytes
+    except Exception as e:
+        raise Exception(f"Ошибка при синтезе речи: {e}")

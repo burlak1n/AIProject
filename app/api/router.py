@@ -5,7 +5,7 @@ from typing import List
 import uuid
 from aiogram import F, Router
 from aiogram.filters import Command
-from aiogram.types import Message, FSInputFile, CallbackQuery
+from aiogram.types import Message, FSInputFile, CallbackQuery, InputFile, BufferedInputFile
 from gigachat import GigaChat
 from loguru import logger
 from app.api.dao import UsersDAO, RecipesDAO
@@ -16,13 +16,15 @@ from app.api.schemas import GetRecipeDB, AddRecipeDB
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
-from .utils import find_similar_recipes, create_tfidf_vectors
+from app.api.utils import find_similar_recipes, create_tfidf_vectors, text_to_speech
 from app.config import GigaChatKey, kandinsky_api_key, kandinsky_secret_key
 from gigachat.models import Chat, Messages, MessagesRole
 from app.create_bot import bot
 import soundfile as sf
 from speech_recognition import Recognizer, AudioFile
 from kandinskylib import Kandinsky
+import io
+import re
 
 r_user = Router()
 r_user.message.middleware(AuthMiddleware())
@@ -184,21 +186,24 @@ async def handle_text(callback: CallbackQuery, state:FSMContext):
             
 # ГОЛОСОВОЕ | GigaChat
 @r_user.message(F.voice, Payload.payload)
-async def handle_audio(callback: CallbackQuery, state:FSMContext):
+async def handle_audio(message: Message, state:FSMContext):
     logger.info("handle_audio")
-    voice_file_id = callback.message.voice.file_id
-    filename = f"data/{voice_file_id}"
-    await bot.download(voice_file_id, destination=f'{filename}.ogg')
-
-    data, samplerate = sf.read(f'{filename}.ogg')
-    sf.write(f'{filename}.wav', data, samplerate)
-
-    os.remove(f'{filename}.ogg')
-
-    recognizer = Recognizer()
+    voice_file_id = message.voice.file_id
     
-    with AudioFile(f'{filename}.wav') as source:
-        audio_data = recognizer.record(source)
+    # Скачиваем файл в память
+    voice_file = await bot.download(voice_file_id)
+    voice_bytes = voice_file.read()
+    
+    # Конвертируем ogg в wav в памяти
+    with io.BytesIO(voice_bytes) as ogg_buffer:
+        data, samplerate = sf.read(ogg_buffer)
+        wav_buffer = io.BytesIO()
+        sf.write(wav_buffer, data, samplerate, format='wav')
+        wav_buffer.seek(0)
+        
+        recognizer = Recognizer()
+        with AudioFile(wav_buffer) as source:
+            audio_data = recognizer.record(source)
 
     try:
         text = recognizer.recognize_google(audio_data, language="ru-RU")  # Используйте нужный язык
@@ -211,11 +216,19 @@ async def handle_audio(callback: CallbackQuery, state:FSMContext):
             response = giga.chat(payload)
             payload.messages.append(response.choices[0].message)
             await state.update_data(payload=payload)
-        await callback.message.reply(response.choices[0].message.content)
+            
+            # Преобразуем ответ в голосовое сообщение
+            response_text = response.choices[0].message.content
+            # Убираем Markdown форматирование
+            response_text = re.sub(r'[*_`#]', '', response_text)
+            audio = await text_to_speech(response_text)
+            
+            # Используем BufferedInputFile
+            voice = BufferedInputFile(audio.getvalue(), filename="response.ogg")
+            await message.answer_voice(voice)
+            
     except Exception as e:
-        await callback.message.reply(f"Произошла ошибка при обработке аудиосообщения: {e}")
-    
-    os.remove(f'{filename}.wav')
+        await message.answer(f"Произошла ошибка при обработке аудиосообщения: {e}")
 
 # ТЕКСТ | GigaChat
 @r_user.message(Payload.payload)
