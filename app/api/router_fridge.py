@@ -12,8 +12,13 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 
+from app.api.dao import UsersDAO
+from app.api.models import User
+from app.api.schemas import GetUserDB
 from app.api.utils import image_bytes_to_base64, truncate_message
 from app.config import OPENAI_API_KEY, FRIDGE_IMAGE_PROMPT, FOOD_IMAGE_PROMPT, PREFERENCES_TEXT_PROMPT, PROXY
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.dao.session_maker import session_manager
 
 openai.api_key = OPENAI_API_KEY
 # Если прокси не нужен, просто уберите этот параметр из AiohttpSession
@@ -99,7 +104,8 @@ async def get_telegram_file_bytes(photo: types.PhotoSize, bot: Bot) -> bytes:
 
 # ------------------ Обработчики фотографий ------------------
 @router.message(FridgeImage.waiting_for_fridge_image, F.content_type == ContentType.PHOTO)
-async def handle_fridge_image(message: types.Message, state: FSMContext) -> None:
+@session_manager.connection()
+async def handle_fridge_image(message: types.Message, session: AsyncSession, state: FSMContext) -> None:
     """
     Получаем фото холодильника, обрабатываем в памяти,
     передаём в GPT-4o с использованием FRIDGE_IMAGE_PROMPT.
@@ -110,9 +116,14 @@ async def handle_fridge_image(message: types.Message, state: FSMContext) -> None
     image_bytes = await get_telegram_file_bytes(photo, message.bot)
     base64_image = image_bytes_to_base64(image_bytes)
 
-    # TODO: DB
-    user = user_data.get(message.from_user.id, {})
-    contra = user.get("contra", "нет противопоказаний")
+    # Получаем пользователя из БД
+    m = message.from_user
+    user: User = await UsersDAO.find_one_or_none(session, GetUserDB(telegram_id=m.id))
+    if not user:
+        await message.answer("Ошибка: пользователь не найден")
+        return
+    
+    contra = user.contra if user.contra is not None else "Нет противопоказаний"
     # Собираем текст запроса для GPT, можно потом доработать форматирование
     user_text = f"Вот фото моего холодильника. Противопоказания: {contra}. Что можно приготовить?"
 
@@ -124,7 +135,8 @@ async def handle_fridge_image(message: types.Message, state: FSMContext) -> None
 
 
 @router.message(FoodImage.waiting_for_food_image, F.content_type == ContentType.PHOTO)
-async def handle_food_image(message: types.Message, state: FSMContext) -> None:
+@session_manager.connection()
+async def handle_food_image(message: types.Message, session: AsyncSession, state: FSMContext) -> None:
     """
     Получаем фото блюда, обрабатываем в памяти,
     передаём в GPT-4o с использованием FOOD_IMAGE_PROMPT для опознания.
@@ -135,9 +147,14 @@ async def handle_food_image(message: types.Message, state: FSMContext) -> None:
     image_bytes = await get_telegram_file_bytes(photo, message.bot)
     base64_image = image_bytes_to_base64(image_bytes)
 
-    # TODO: DB
-    user = user_data.get(message.from_user.id, {})
-    contra = user.get("contra", "нет противопоказаний")
+    # Получаем пользователя из БД
+    m = message.from_user
+    user: User = await UsersDAO.find_one_or_none(session, GetUserDB(telegram_id=m.id))
+    if not user:
+        await message.answer("Ошибка: пользователь не найден")
+        return
+    
+    contra = user.contra if user.contra is not None else "Нет противопоказаний"
     user_text = f"Вот фото блюда. Противопоказания: {contra}. Что это за блюдо и как его приготовить?"
 
     response_text = call_gpt4o_with_image(FOOD_IMAGE_PROMPT, user_text, base64_image)
@@ -148,15 +165,21 @@ async def handle_food_image(message: types.Message, state: FSMContext) -> None:
 
 
 @router.message(IndividualPreferences.waiting_for_preferences_text)
-async def handle_preferences_text(message: types.Message, state: FSMContext) -> None:
+@session_manager.connection()
+async def handle_preferences_text(message: types.Message, session: AsyncSession, state: FSMContext) -> None:
     """
     Обрабатываем текстовые предпочтения с использованием PREFERENCES_TEXT_PROMPT.
     """
     await message.answer("Обрабатываю ваши предпочтения, подождите...")
 
-    # TODO: DB
-    user = user_data.get(message.from_user.id, {})
-    contra = user.get("contra", "")
+    # Получаем пользователя из БД
+    m = message.from_user
+    user: User = await UsersDAO.find_one_or_none(session, GetUserDB(telegram_id=m.id))
+    if not user:
+        await message.answer("Ошибка: пользователь не найден")
+        return
+    
+    contra = user.contra if user.contra is not None else ""
     user_input = message.text.strip()
 
     prompt = (

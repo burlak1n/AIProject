@@ -6,6 +6,7 @@ from app.dao.base import BaseDAO
 from app.api.models import User, Recipe
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+
 class UsersDAO(BaseDAO):
     model = User
 
