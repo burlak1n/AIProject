@@ -27,23 +27,6 @@ from kandinskylib import Kandinsky
 r_user = Router()
 r_user.message.middleware(AuthMiddleware())
 
-command_list_message = \
-'''
-Команды:
-/help - перечисление всех функций бота
-/recipes - список всех рецептов
-/add_recipe - добавить новый рецепт
-/random_me - получить случайный рецепт из своих
-/random - получить случайный рецепт из всех
-/giga - начать/обнулить диалог с GigaChat
-/image - для старта Kandinsky
-/find ... - по запросу найти похожий рецепт из базы
-
-Прочее:
-текст - ответит GigaChat
-голосовое - транскрибируется и отправится как сообщение для GigaChat
-'''
-
 class RecipeStates(StatesGroup):
     waiting_for_title = State()
     waiting_for_ingredients = State()
@@ -57,6 +40,7 @@ class Image(StatesGroup):
     
 @r_user.callback_query(F.data == "image")
 async def kandin_image(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
     await state.set_state(Image.image)
     await callback.message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
 
@@ -78,13 +62,15 @@ async def kandin_gen_image(message:Message, state: FSMContext):
     os.remove(p)
     await state.clear()
 
-@r_user.callback_query(F.data == "help")
-async def cmd_help(callback: CallbackQuery):
-    await callback.message.answer(command_list_message)
+# @r_user.callback_query(F.data == "help")
+# async def cmd_help(callback: CallbackQuery):
+#     await callback.answer()
+#     await callback.message.answer(command_list_message, parse_mode="Markdown")
 
 # Команда /add_recipe
 @r_user.callback_query(F.data == "add_recipe")
 async def add_recipe(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
     await state.set_state(RecipeStates.waiting_for_title)
     await callback.message.answer("Введите название рецепта:")
 
@@ -120,6 +106,7 @@ async def finish_adding_recipe(message: Message, state: FSMContext, session: Asy
 @r_user.callback_query(F.data == "random_me")
 @session_manager.connection()
 async def get_random_recipe(callback: CallbackQuery, session: AsyncSession, user: User):
+    await callback.answer()
     recipes: List[Recipe] = await RecipesDAO.find_all(session, GetRecipeDB(user_id=user.id))
     if not recipes:
         await callback.message.answer("У вас еще нет рецептов. Добавьте их с помощью команды /add_recipe.")
@@ -131,6 +118,7 @@ async def get_random_recipe(callback: CallbackQuery, session: AsyncSession, user
 @r_user.callback_query(F.data == "recipes")
 @session_manager.connection()
 async def get_recipes(callback: CallbackQuery, session: AsyncSession, user: User):
+    await callback.answer()
     recipes: List[Recipe] = await RecipesDAO.find_all(session, GetRecipeDB(user_id=user.id))
     if not recipes:
         await callback.message.answer("У вас еще нет рецептов! Добавьте их с помощью команды /add_recipe")
@@ -144,6 +132,7 @@ async def get_recipes(callback: CallbackQuery, session: AsyncSession, user: User
 @r_user.callback_query(F.data == "privacy")
 @session_manager.connection()
 async def change_privace(callback: CallbackQuery, session: AsyncSession, user: User):
+    await callback.answer()
     user = await UsersDAO.find_by_ids(session, [user.id])
     user = user[0]
     user.private = not user.private
@@ -153,6 +142,7 @@ async def change_privace(callback: CallbackQuery, session: AsyncSession, user: U
 @r_user.callback_query(F.data == "find")
 @session_manager.connection()
 async def find_recipes(callback: CallbackQuery, session: AsyncSession, user: User):
+    await callback.answer()
     msg = callback.data.split(maxsplit=1)
     if len(msg) > 1:
         recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session=session, user_id=user.id)
@@ -168,6 +158,7 @@ async def find_recipes(callback: CallbackQuery, session: AsyncSession, user: Use
 @r_user.callback_query(F.data == "random")
 @session_manager.connection()
 async def random_others_recipe(callback: CallbackQuery, session: AsyncSession, user: User):
+    await callback.answer()
     recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session, user_id=user.id)
     if not recipes:
         await callback.message.answer("В Базе пока нет рецептов!")
@@ -177,6 +168,7 @@ async def random_others_recipe(callback: CallbackQuery, session: AsyncSession, u
 
 @r_user.callback_query(F.data == "giga")
 async def handle_text(callback: CallbackQuery, state:FSMContext):
+    await callback.answer()
     await state.set_state(Payload.payload)
     await state.update_data(payload=Chat(
         messages=[

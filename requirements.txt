@@ -10,3 +10,4 @@ loguru
 sqlalchemy
 aiosqlite
 alembic
+openai

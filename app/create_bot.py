@@ -12,9 +12,12 @@ from aiogram.client.session.aiohttp import AiohttpSession
 # Базовое логирование
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
-session = AiohttpSession(
-    proxy=PROXY
-)
+session = None
+if PROXY:
+    session = AiohttpSession(
+        proxy=PROXY
+    )
+
 
 bot = Bot(
     token=TOKEN,

@@ -1,8 +1,8 @@
-"""second
+"""contra_nullable
 
-Revision ID: 94b8770f3827
+Revision ID: 29139b6fb7e9
 Revises: 
-Create Date: 2025-01-20 22:09:52.215951
+Create Date: 2025-03-19 18:32:06.617367
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '94b8770f3827'
+revision: str = '29139b6fb7e9'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -24,12 +24,13 @@ def upgrade() -> None:
     sa.Column('telegram_id', sa.Integer(), nullable=False),
     sa.Column('username', sa.String(), nullable=False),
     sa.Column('fullname', sa.String(), nullable=False),
-    sa.Column('email', sa.String(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('contra', sa.String(), nullable=True),
+    sa.Column('private', sa.Boolean(), nullable=False),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('created_at', sa.TIMESTAMP(), nullable=False),
     sa.Column('updated_at', sa.TIMESTAMP(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('email'),
     sa.UniqueConstraint('fullname'),
     sa.UniqueConstraint('telegram_id'),
     sa.UniqueConstraint('username')

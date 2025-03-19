@@ -12,7 +12,7 @@ class User(Base):
     username: Mapped[uniq_str_an]
     fullname: Mapped[uniq_str_an]
     name: Mapped[str]
-    contra: Mapped[str]
+    contra: Mapped[str] = mapped_column(nullable=True)
     private: Mapped[bool] = mapped_column(Boolean, default=False)
 
     def __repr__(self):
