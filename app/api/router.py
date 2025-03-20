@@ -212,7 +212,8 @@ async def handle_audio(message: Message, state:FSMContext):
         with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
             data = await state.get_data()
             payload = data["payload"]
-            
+
+            # TODO: Протестить диалог
             payload.messages.append(Messages(role=MessagesRole.USER, content=text))
             response = giga.chat(payload)
             payload.messages.append(response.choices[0].message)
@@ -225,7 +226,9 @@ async def handle_audio(message: Message, state:FSMContext):
             audio = await text_to_speech(response_text)
             
             # Используем BufferedInputFile
+            # TODO: Добавить метаданные для waveform audio
             voice = BufferedInputFile(audio.getvalue(), filename="response.ogg")
+            
             await message.answer_voice(voice)
             
     except Exception as e:
