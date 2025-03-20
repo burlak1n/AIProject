@@ -11,4 +11,4 @@ sqlalchemy
 aiosqlite
 alembic
 openai
-gtts
+pyttsx3
