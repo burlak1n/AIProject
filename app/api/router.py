@@ -3,6 +3,8 @@ import os
 import random
 from typing import List
 import uuid
+from app.keyboards import kb
+from app.keyboards import reply_kb
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import Message, FSInputFile, CallbackQuery, InputFile, BufferedInputFile
@@ -27,6 +29,9 @@ import io
 import re
 
 r_user = Router()
+
+
+
 r_user.message.middleware(AuthMiddleware())
 r_user.callback_query.middleware(AuthMiddleware())
 
@@ -34,13 +39,68 @@ class RecipeStates(StatesGroup):
     waiting_for_title = State()
     waiting_for_ingredients = State()
     waiting_for_steps = State()
-    
+
+class CalculateIngredients(StatesGroup):
+    waiting_for_ingredients = State()
+
 class Payload(StatesGroup):
     payload = State()
 
+# Инициализация GigaChat
+async def init_giga_chat():
+    return Chat(
+        messages=[
+            Messages(
+                role=MessagesRole.SYSTEM,
+                content="Ты профессиональный повар, который готов посоветовать множество рецептов."
+            )
+        ],
+        temperature=0.7,
+        max_tokens=1000,
+    )
+
+async def init_giga_chat_calculate_ingredients():
+    return Chat(
+        messages=[
+            Messages(
+                role=MessagesRole.SYSTEM,
+                content="Ты профессиональный повар и математик. Ты потрясающи считаешь порции. Рассчитай, сколько ингредиентов нужно пользователю. Если пользователь указал количество порций, то необходимо умножить количество каждого ингредиента на количество порций. Отвечай крато и по делу."
+            )
+        ],
+        temperature=1,
+        max_tokens=1000,
+    )
+
+# Обработка текстовых сообщений
+
+@r_user.callback_query(F.data == "calculate_ingredients")
+async def kandin_image(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(CalculateIngredients.waiting_for_ingredients)
+    await callback.message.reply("Напишите рецепт, по которому нужно рассчитать ингедиенты")
+
+# Обработчик для расчета ингредиентов
+@r_user.message(CalculateIngredients.waiting_for_ingredients)
+async def calculate_ingredients(message: Message):
+
+    # Извлекаем текст запроса
+    user_input = message.text
+
+    # Инициализируем GigaChat
+    with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
+        # Формируем запрос
+        payload = await init_giga_chat_calculate_ingredients()
+        payload.messages.append(Messages(role=MessagesRole.USER, content=user_input))
+
+        # Отправляем запрос к GigaChat
+        response = giga.chat(payload)
+
+        # Отправляем ответ пользователю
+        await message.answer(response.choices[0].message.content, reply_markup=kb.main_kb)
+
 class Image(StatesGroup):
     image = State()
-    
+
 @r_user.callback_query(F.data == "image")
 async def kandin_image(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
@@ -81,7 +141,7 @@ async def add_recipe(callback: CallbackQuery, state: FSMContext):
 @r_user.message(RecipeStates.waiting_for_title)
 async def process_title(message: Message, state: FSMContext):
     await state.update_data(title=message.text)
-    
+
     await state.set_state(RecipeStates.waiting_for_ingredients)
     await message.answer("Отлично! Теперь напишите ингредиенты через запятую.")
 
@@ -102,8 +162,8 @@ async def finish_adding_recipe(message: Message, state: FSMContext, session: Asy
 
     a = AddRecipeDB(user_id=user.id, title=data["title"], ingridiends=data["ingridiends"], steps=data["steps"])
     recipe: Recipe = await RecipesDAO.add(session, a)
-    
-    await message.answer(f"Рецепт '{recipe.title}' успешно добавлен!")
+
+    await message.answer(f"Рецепт '{recipe.title}' успешно добавлен!", reply_markup=kb.main_kb)
     await state.clear()
 
 @r_user.callback_query(F.data == "random_me")
@@ -113,8 +173,8 @@ async def get_random_recipe(callback: CallbackQuery, session: AsyncSession, user
     recipes: List[Recipe] = await RecipesDAO.find_all(session, GetRecipeDB(user_id=user.id))
     if not recipes:
         await callback.message.answer("У вас еще нет рецептов. Добавьте их с помощью команды /add_recipe.")
-        return 
-    
+        return
+
     recipe = random.choice(recipes)
     await callback.message.answer(str(recipe))
 
@@ -140,7 +200,11 @@ async def change_privace(callback: CallbackQuery, session: AsyncSession, user: U
     user = user[0]
     user.private = not user.private
     await session.commit()
-    await callback.message.answer(f"Ваша приватность изменена на {user.private}")
+    if user.private:
+        await callback.message.answer(f"Ваши рецепты видны другим пользователям", reply_markup=kb.main_kb)
+    else:
+        await callback.message.answer(f"Ваши рецепты не видны другим пользователям", reply_markup=kb.main_kb)
+    # await callback.message.answer(f"Ваша приватность изменена на {user.private}")
 
 @r_user.callback_query(F.data == "find")
 @session_manager.connection()
@@ -167,7 +231,7 @@ async def random_others_recipe(callback: CallbackQuery, session: AsyncSession, u
         await callback.message.answer("В Базе пока нет рецептов!")
         return
     recipe = random.choice(recipes)
-    await callback.message.answer(str(recipe))
+    await callback.message.answer(str(recipe), reply_markup=kb.main_kb)
 
 @r_user.callback_query(F.data == "giga")
 async def handle_text(callback: CallbackQuery, state:FSMContext):
@@ -181,27 +245,27 @@ async def handle_text(callback: CallbackQuery, state:FSMContext):
             )
         ],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1000,
     ))
     await callback.message.answer("Чем могу помочь?")
-            
+
 # ГОЛОСОВОЕ | GigaChat
 @r_user.message(F.voice, Payload.payload)
 async def handle_audio(message: Message, state:FSMContext):
     logger.info("handle_audio")
     voice_file_id = message.voice.file_id
-    
+
     # Скачиваем файл в память
     voice_file = await bot.download(voice_file_id)
     voice_bytes = voice_file.read()
-    
+
     # Конвертируем ogg в wav в памяти
     with io.BytesIO(voice_bytes) as ogg_buffer:
         data, samplerate = sf.read(ogg_buffer)
         wav_buffer = io.BytesIO()
         sf.write(wav_buffer, data, samplerate, format='wav')
         wav_buffer.seek(0)
-        
+
         recognizer = Recognizer()
         with AudioFile(wav_buffer) as source:
             audio_data = recognizer.record(source)
@@ -218,19 +282,19 @@ async def handle_audio(message: Message, state:FSMContext):
             response = giga.chat(payload)
             payload.messages.append(response.choices[0].message)
             await state.update_data(payload=payload)
-            
+
             # Преобразуем ответ в голосовое сообщение
             response_text = response.choices[0].message.content
             # Убираем Markdown форматирование
             response_text = re.sub(r'[*_`#]', '', response_text)
             audio = await text_to_speech(response_text)
-            
+
             # Используем BufferedInputFile
             # TODO: Добавить метаданные для waveform audio
             voice = BufferedInputFile(audio.getvalue(), filename="response.ogg")
-            
+
             await message.answer_voice(voice)
-            
+
     except Exception as e:
         await message.answer(f"Произошла ошибка при обработке аудиосообщения: {e}")
 
@@ -244,7 +308,7 @@ async def handle_giga(message: Message, state:FSMContext):
         with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
             data = await state.get_data()
             payload = data["payload"]
-            
+
             payload.messages.append(Messages(role=MessagesRole.USER, content=message.text))
             response = giga.chat(payload)
             payload.messages.append(response.choices[0].message)
@@ -261,3 +325,53 @@ async def scheduled_task(session:AsyncSession):
 
             user.updated_at = datetime.now()
             await session.commit()
+@r_user.message(F.text)
+async def handle_text(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+
+    # Состояния, при которых GigaChat не должен обрабатывать сообщения
+    skip_states = [
+        RecipeStates.waiting_for_title,
+        RecipeStates.waiting_for_ingredients,
+        RecipeStates.waiting_for_steps
+    ]
+    skip_commands = [
+        # "Рецепты",
+        # "Добавить рецепт",
+        # "Случайный рецепт",
+        # "Найти рецепт",
+        # "Предпочтения",
+        # "Показать/Скрыть рецепты",
+        # "Спросить у помощника",
+        # "Сгенерировать фото",
+    ]
+
+    # Если текущее состояние в списке skip_states, пропускаем GigaChat
+    if current_state in skip_states or message.text in skip_commands:
+        return
+
+
+    # Проверяем, является ли сообщение командой
+    if message.text.startswith('/'):
+        # Если это команда, пропускаем обработку GigaChat
+        return
+
+    # Если это не команда, обрабатываем через GigaChat
+    await bot.send_chat_action(message.chat.id, "typing")  # Показываем, что бот печатает
+    data = await state.get_data()
+
+    # Инициализируем GigaChat, если это первый запрос
+    if "payload" not in data:
+        data["payload"] = await init_giga_chat()
+
+    # Добавляем сообщение пользователя в историю
+    data["payload"].messages.append(Messages(role=MessagesRole.USER, content=message.text))
+
+    # Отправляем запрос к GigaChat
+    with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
+        response = giga.chat(data["payload"])
+        data["payload"].messages.append(response.choices[0].message)
+        await state.update_data(payload=data["payload"])
+
+        # Отправляем ответ пользователю
+        await message.answer(response.choices[0].message.content, reply_markup=kb.main_kb)

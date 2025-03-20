@@ -11,15 +11,15 @@ main_kb = InlineKeyboardMarkup(
                 InlineKeyboardButton(text="Рецепты", callback_data="recipes")
             ],
             [
-                InlineKeyboardButton(text="Случайный рецепт", callback_data="random_recipe"),
+                InlineKeyboardButton(text="Рассчитай ингредиенты", callback_data="calculate_ingredients"),
                 InlineKeyboardButton(text="Найти рецепт", callback_data="find")
             ],
             [
                 InlineKeyboardButton(text="Предпочтения", callback_data="preferences"),
-                InlineKeyboardButton(text="Конфиденциальность", callback_data="privacy")
+                InlineKeyboardButton(text="Показать/Скрыть рецепты", callback_data="privacy")
             ],
             [
-                InlineKeyboardButton(text="Giga", callback_data="giga"),
+                InlineKeyboardButton(text="Спросить у помощника", callback_data="giga"),
                 InlineKeyboardButton(text="Сгенерировать фото", callback_data="image")
             ],
         ],

@@ -20,9 +20,9 @@ from app.config import OPENAI_API_KEY, FRIDGE_IMAGE_PROMPT, FOOD_IMAGE_PROMPT, P
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dao.session_maker import session_manager
 
+# Настройка OpenAI
 openai.api_key = OPENAI_API_KEY
-# Если прокси не нужен, просто уберите этот параметр из AiohttpSession
-openai.proxy = PROXY
+openai.proxy = PROXY  # Указываем прокси
 
 
 class FridgeImage(StatesGroup):
@@ -50,6 +50,8 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
 
 # ---------- Создаем Router и регистрируем обработчики ----------
 router = Router()
+
+
 # Обработка колбэков от кнопок
 @router.callback_query(lambda c: c.data in ["fridge", "food", "preferences"])
 async def process_menu(callback_query: types.CallbackQuery, state: FSMContext) -> None:
@@ -66,6 +68,7 @@ async def process_menu(callback_query: types.CallbackQuery, state: FSMContext) -
             "Расскажите о своих индивидуальных предпочтениях в еде. Опишите, что нравится, а что нет, или укажите продукты, которые у вас есть.")
         await state.set_state(IndividualPreferences.waiting_for_preferences_text)
     await callback_query.answer()
+
 
 # -------------------- Вызов GPT-4o с изображением (через base64) --------------------
 def call_gpt4o_with_image(system_prompt: str, user_text: str, base64_image: str) -> str:
@@ -122,9 +125,8 @@ async def handle_fridge_image(message: types.Message, session: AsyncSession, sta
     if not user:
         await message.answer("Ошибка: пользователь не найден")
         return
-    
+
     contra = user.contra if user.contra is not None else "Нет противопоказаний"
-    # Собираем текст запроса для GPT, можно потом доработать форматирование
     user_text = f"Вот фото моего холодильника. Противопоказания: {contra}. Что можно приготовить?"
 
     response_text = call_gpt4o_with_image(FRIDGE_IMAGE_PROMPT, user_text, base64_image)
@@ -153,7 +155,7 @@ async def handle_food_image(message: types.Message, session: AsyncSession, state
     if not user:
         await message.answer("Ошибка: пользователь не найден")
         return
-    
+
     contra = user.contra if user.contra is not None else "Нет противопоказаний"
     user_text = f"Вот фото блюда. Противопоказания: {contra}. Что это за блюдо и как его приготовить?"
 
@@ -178,7 +180,7 @@ async def handle_preferences_text(message: types.Message, session: AsyncSession,
     if not user:
         await message.answer("Ошибка: пользователь не найден")
         return
-    
+
     contra = user.contra if user.contra is not None else ""
     user_input = message.text.strip()
 
@@ -210,4 +212,3 @@ def call_gpt_api(prompt: str) -> str:
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Произошла ошибка при обращении к ИИ: {e}"
-
