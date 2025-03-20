@@ -4,7 +4,6 @@ from app.config import MAX_MESSAGE_LENGTH
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
-from gtts import gTTS
 import io
 import os
 import asyncio
@@ -62,14 +61,36 @@ async def text_to_speech(text: str, lang: str = 'ru') -> io.BytesIO:
     :return: BytesIO объект с аудио
     """
     try:
+        import pyttsx3
+        import wave
+        import tempfile
+        
+        # Инициализация движка
+        engine = pyttsx3.init()
+        
+        # Настройки голоса
+        voices = engine.getProperty('voices')
+        if lang == 'ru':
+            engine.setProperty('voice', voices[0].id)  # Русский голос
+        else:
+            engine.setProperty('voice', voices[1].id)  # Английский голос
+        
         # Создаем временный файл
-        tts = gTTS(text=text, lang=lang, slow=False)
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+            tmp_path = tmp_file.name
         
-        # Используем BytesIO для хранения аудио в памяти
-        audio_bytes = io.BytesIO()
-        tts.write_to_fp(audio_bytes)
+        # Сохраняем аудио во временный файл
+        engine.save_to_file(text, tmp_path)
+        engine.runAndWait()
+        
+        # Читаем файл в BytesIO
+        with open(tmp_path, 'rb') as f:
+            audio_bytes = io.BytesIO(f.read())
+        
+        # Удаляем временный файл
+        os.unlink(tmp_path)
+        
         audio_bytes.seek(0)
-        
         return audio_bytes
     except Exception as e:
         raise Exception(f"Ошибка при синтезе речи: {e}")
