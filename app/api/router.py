@@ -28,6 +28,7 @@ import re
 
 r_user = Router()
 r_user.message.middleware(AuthMiddleware())
+r_user.callback_query.middleware(AuthMiddleware())
 
 class RecipeStates(StatesGroup):
     waiting_for_title = State()
