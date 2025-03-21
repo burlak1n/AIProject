@@ -3,6 +3,7 @@ import os
 import random
 from typing import List
 import uuid
+from app.api.router_fridge import IndividualPreferences
 from app.keyboards import kb
 from aiogram import F, Router
 from aiogram.types import Message, FSInputFile, CallbackQuery, BufferedInputFile
@@ -271,7 +272,8 @@ async def handle_text(message: Message, state: FSMContext, user: User):
     skip_states = [
         RecipeStates.waiting_for_title,
         RecipeStates.waiting_for_ingredients,
-        RecipeStates.waiting_for_steps
+        RecipeStates.waiting_for_steps,
+        IndividualPreferences.waiting_for_preferences_text
     ]
 
     # Если текущее состояние в списке skip_states, пропускаем GigaChat

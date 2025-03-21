@@ -23,3 +23,7 @@ class AddRecipeDB(GetRecipeDB):
     ingridiends: List[str] = Field(description="Ингредиенты")
     steps: List[str] = Field(description="Шаги")
     model_config = ConfigDict(from_attributes=True)
+
+class UpdateUserContraDB(BaseModel):
+    telegram_id: int
+    contra: str

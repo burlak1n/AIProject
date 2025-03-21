@@ -1,6 +1,10 @@
+from loguru import logger
 import openai
 import io
 
+from pydantic import BaseModel
+
+from app.api.middleware import AuthMiddleware
 from app.api.utils import escape_markdown
 from aiogram import Bot, Router, F
 from aiogram.types import ContentType, CallbackQuery, PhotoSize, Message
@@ -10,7 +14,7 @@ from app.keyboards import kb
 
 from app.api.dao import UsersDAO
 from app.api.models import User
-from app.api.schemas import GetUserDB
+from app.api.schemas import GetUserDB, UpdateUserContraDB
 from app.api.utils import image_bytes_to_base64, truncate_message
 from app.config import OPENAI_API_KEY, FRIDGE_IMAGE_PROMPT, FOOD_IMAGE_PROMPT, PREFERENCES_TEXT_PROMPT, PROXY
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,11 +40,12 @@ class IndividualPreferences(StatesGroup):
 
 # ---------- Создаем Router и регистрируем обработчики ----------
 router = Router()
-
+router.message.middleware(AuthMiddleware())
+router.callback_query.middleware(AuthMiddleware())
 
 # Обработка колбэков от кнопок
 @router.callback_query(lambda c: c.data in ["fridge", "food", "preferences"])
-async def process_menu(callback_query: CallbackQuery, state: FSMContext) -> None:
+async def process_menu(callback_query: CallbackQuery, state: FSMContext, user: User) -> None:
     selection = callback_query.data
     if selection == "fridge":
         await callback_query.message.answer("Отправьте, пожалуйста, фотографию своего холодильника.")
@@ -50,8 +55,13 @@ async def process_menu(callback_query: CallbackQuery, state: FSMContext) -> None
             "Отправьте, пожалуйста, фотографию еды, чтобы я мог определить, что это и как её приготовить.")
         await state.set_state(FoodImage.waiting_for_food_image)
     elif selection == "preferences":
+        m = ""
+        logger.info(user.contra)
+        if user.contra:
+            m = f"Ваши предпочтения: {user.contra}"
         await callback_query.message.answer(
-            "Расскажите о своих индивидуальных предпочтениях в еде. Опишите, что нравится, а что нет, или укажите продукты, которые у вас есть.")
+            f"Расскажите о своих индивидуальных предпочтениях в еде. Опишите, что нравится, а что нет, или укажите продукты, которые у вас есть. {m}"
+        )
         await state.set_state(IndividualPreferences.waiting_for_preferences_text)
     await callback_query.answer()
 
@@ -93,8 +103,7 @@ async def get_telegram_file_bytes(photo: PhotoSize, bot: Bot) -> bytes:
 
 # ------------------ Обработчики фотографий ------------------
 @router.message(FridgeImage.waiting_for_fridge_image, F.content_type == ContentType.PHOTO)
-@session_manager.connection()
-async def handle_fridge_image(message: Message, session: AsyncSession, state: FSMContext) -> None:
+async def handle_fridge_image(message: Message, state: FSMContext, user: User) -> None:
     """
     Получаем фото холодильника, обрабатываем в памяти,
     передаём в GPT-4o с использованием FRIDGE_IMAGE_PROMPT.
@@ -104,13 +113,6 @@ async def handle_fridge_image(message: Message, session: AsyncSession, state: FS
     photo = message.photo[-1]
     image_bytes = await get_telegram_file_bytes(photo, message.bot)
     base64_image = image_bytes_to_base64(image_bytes)
-
-    # Получаем пользователя из БД
-    m = message.from_user
-    user: User = await UsersDAO.find_one_or_none(session, GetUserDB(telegram_id=m.id))
-    if not user:
-        await message.answer("Ошибка: пользователь не найден")
-        return
 
     contra = user.contra if user.contra is not None else "Нет противопоказаний"
     user_text = f"Вот фото моего холодильника. Противопоказания: {contra}. Что можно приготовить?"
@@ -124,8 +126,7 @@ async def handle_fridge_image(message: Message, session: AsyncSession, state: FS
 
 
 @router.message(FoodImage.waiting_for_food_image, F.content_type == ContentType.PHOTO)
-@session_manager.connection()
-async def handle_food_image(message: Message, session: AsyncSession, state: FSMContext) -> None:
+async def handle_food_image(message: Message, state: FSMContext, user: User) -> None:
     """
     Получаем фото блюда, обрабатываем в памяти,
     передаём в GPT-4o с использованием FOOD_IMAGE_PROMPT для опознания.
@@ -135,13 +136,6 @@ async def handle_food_image(message: Message, session: AsyncSession, state: FSMC
     photo = message.photo[-1]
     image_bytes = await get_telegram_file_bytes(photo, message.bot)
     base64_image = image_bytes_to_base64(image_bytes)
-
-    # Получаем пользователя из БД
-    m = message.from_user
-    user: User = await UsersDAO.find_one_or_none(session, GetUserDB(telegram_id=m.id))
-    if not user:
-        await message.answer("Ошибка: пользователь не найден")
-        return
 
     contra = user.contra if user.contra is not None else "Нет противопоказаний"
     user_text = f"Вот фото блюда. Противопоказания: {contra}. Что это за блюдо и как его приготовить?"
@@ -154,22 +148,17 @@ async def handle_food_image(message: Message, session: AsyncSession, state: FSMC
 
 
 @router.message(IndividualPreferences.waiting_for_preferences_text)
-@session_manager.connection()
-async def handle_preferences_text(message: Message, session: AsyncSession, state: FSMContext) -> None:
+async def handle_preferences_text(message: Message, session: AsyncSession, state: FSMContext, user: User) -> None:
     """
     Обрабатываем текстовые предпочтения с использованием PREFERENCES_TEXT_PROMPT.
     """
+    logger.info(f"Начало обработки текстовых предпочтений для пользователя {user.telegram_id}")
+    
     await message.answer("Обрабатываю ваши предпочтения, подождите...")
 
-    # Получаем пользователя из БД
-    m = message.from_user
-    user: User = await UsersDAO.find_one_or_none(session, GetUserDB(telegram_id=m.id))
-    if not user:
-        await message.answer("Ошибка: пользователь не найден")
-        return
-
-    contra = user.contra if user.contra is not None else ""
+    contra = user.contra if user.contra is not None else "Нет противопоказаний"
     user_input = message.text.strip()
+    logger.debug(f"Получены предпочтения: {user_input}, противопоказания: {contra}")
 
     prompt = (
         f"{PREFERENCES_TEXT_PROMPT}\n"
@@ -177,10 +166,29 @@ async def handle_preferences_text(message: Message, session: AsyncSession, state
         f"Противопоказания: {contra}\n"
         "Задача: предложить блюда, подходящие под указанные предпочтения с учётом имеющихся продуктов."
     )
-    response_text = call_gpt_api(prompt)
-    response_text = truncate_message(response_text)
-    await message.answer(escape_markdown(response_text), parse_mode="MarkdownV2", reply_markup=kb.main_kb)
-    await state.clear()
+    logger.debug(f"Сформированный промпт для GPT: {prompt}")
+
+    try:
+        logger.info("Обновление противопоказаний пользователя в БД")
+        await UsersDAO.update(session, GetUserDB(telegram_id=message.from_user.id), UpdateUserContraDB(
+            telegram_id=user.telegram_id,
+            contra=message.text
+        ))
+
+        logger.info("Обращение к GPT API")
+        response_text = call_gpt_api(prompt)
+        response_text = truncate_message(response_text)
+        logger.debug(f"Получен ответ от GPT: {response_text}")
+
+        await message.answer(escape_markdown(response_text), parse_mode="MarkdownV2", reply_markup=kb.main_kb)
+        logger.info("Ответ успешно отправлен пользователю")
+        
+        await state.clear()
+        logger.info("Состояние очищено")
+        
+    except Exception as e:
+        logger.error(f"Ошибка при обработке предпочтений: {e}")
+        await message.answer("Произошла ошибка при обработке ваших предпочтений. Пожалуйста, попробуйте позже.")
 
 
 # ------------------ Функция для работы с текстовой моделью (например, o3-mini) ------------------
