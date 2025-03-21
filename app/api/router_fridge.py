@@ -1,16 +1,11 @@
-import asyncio
-import logging
 import openai
-import base64
 import io
+
 from app.api.utils import escape_markdown
-from aiogram import Bot, Dispatcher, types, Router, F
-from aiogram.client.bot import DefaultBotProperties
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
-from aiogram.filters import Command
+from aiogram import Bot, Router, F
+from aiogram.types import ContentType, CallbackQuery, PhotoSize, Message
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.memory import MemoryStorage
 from app.keyboards import kb
 
 from app.api.dao import UsersDAO
@@ -45,7 +40,7 @@ router = Router()
 
 # Обработка колбэков от кнопок
 @router.callback_query(lambda c: c.data in ["fridge", "food", "preferences"])
-async def process_menu(callback_query: types.CallbackQuery, state: FSMContext) -> None:
+async def process_menu(callback_query: CallbackQuery, state: FSMContext) -> None:
     selection = callback_query.data
     if selection == "fridge":
         await callback_query.message.answer("Отправьте, пожалуйста, фотографию своего холодильника.")
@@ -85,7 +80,7 @@ def call_gpt4o_with_image(system_prompt: str, user_text: str, base64_image: str)
 
 
 # ------------------ Получение файла из Telegram в виде байт (без сохранения на диск) ------------------
-async def get_telegram_file_bytes(photo: types.PhotoSize, bot: Bot) -> bytes:
+async def get_telegram_file_bytes(photo: PhotoSize, bot: Bot) -> bytes:
     """
     Загружает файл с серверов Telegram и возвращает его содержимое в виде байт.
     """
@@ -99,7 +94,7 @@ async def get_telegram_file_bytes(photo: types.PhotoSize, bot: Bot) -> bytes:
 # ------------------ Обработчики фотографий ------------------
 @router.message(FridgeImage.waiting_for_fridge_image, F.content_type == ContentType.PHOTO)
 @session_manager.connection()
-async def handle_fridge_image(message: types.Message, session: AsyncSession, state: FSMContext) -> None:
+async def handle_fridge_image(message: Message, session: AsyncSession, state: FSMContext) -> None:
     """
     Получаем фото холодильника, обрабатываем в памяти,
     передаём в GPT-4o с использованием FRIDGE_IMAGE_PROMPT.
@@ -124,13 +119,13 @@ async def handle_fridge_image(message: types.Message, session: AsyncSession, sta
     response_text = truncate_message(response_text)
 
 
-    await message.answer(escape_markdown(response_text), parse_mode='MarkdownV2',reply_markup=kb.main_kb)
+    await message.answer(escape_markdown(response_text),reply_markup=kb.main_kb)
     await state.clear()
 
 
 @router.message(FoodImage.waiting_for_food_image, F.content_type == ContentType.PHOTO)
 @session_manager.connection()
-async def handle_food_image(message: types.Message, session: AsyncSession, state: FSMContext) -> None:
+async def handle_food_image(message: Message, session: AsyncSession, state: FSMContext) -> None:
     """
     Получаем фото блюда, обрабатываем в памяти,
     передаём в GPT-4o с использованием FOOD_IMAGE_PROMPT для опознания.
@@ -154,13 +149,13 @@ async def handle_food_image(message: types.Message, session: AsyncSession, state
     response_text = call_gpt4o_with_image(FOOD_IMAGE_PROMPT, user_text, base64_image)
     response_text = truncate_message(response_text)
 
-    await message.answer(escape_markdown(response_text), parse_mode='MarkdownV2',reply_markup=kb.main_kb)
+    await message.answer(escape_markdown(response_text),reply_markup=kb.main_kb)
     await state.clear()
 
 
 @router.message(IndividualPreferences.waiting_for_preferences_text)
 @session_manager.connection()
-async def handle_preferences_text(message: types.Message, session: AsyncSession, state: FSMContext) -> None:
+async def handle_preferences_text(message: Message, session: AsyncSession, state: FSMContext) -> None:
     """
     Обрабатываем текстовые предпочтения с использованием PREFERENCES_TEXT_PROMPT.
     """
@@ -184,7 +179,7 @@ async def handle_preferences_text(message: types.Message, session: AsyncSession,
     )
     response_text = call_gpt_api(prompt)
     response_text = truncate_message(response_text)
-    await message.answer(escape_markdown(response_text), parse_mode='MarkdownV2',reply_markup=kb.main_kb)
+    await message.answer(escape_markdown(response_text),reply_markup=kb.main_kb)
     await state.clear()
 
 
@@ -204,3 +199,4 @@ def call_gpt_api(prompt: str) -> str:
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Произошла ошибка при обращении к ИИ: {e}"
+        

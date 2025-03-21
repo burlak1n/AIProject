@@ -12,7 +12,7 @@ from app.api.dao import UsersDAO, RecipesDAO
 from app.api.middleware import AuthMiddleware
 from app.dao.session_maker import session_manager
 from app.api.models import User, Recipe
-from app.api.schemas import GetRecipeDB, AddRecipeDB
+from app.api.schemas import GetRecipeDB, AddRecipeDB, GetUserDB
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
@@ -60,8 +60,8 @@ async def process_menu(callback: CallbackQuery, state: FSMContext):
 
 # Обработчик для расчета ингредиентов
 @r_user.message(CalculateIngredients.waiting_for_ingredients)
-async def calculate_ingredients(message: Message):
-    payload = await init_giga_chat_calculate_ingredients()
+async def calculate_ingredients(message: Message, user: User):
+    payload = await init_giga_chat_calculate_ingredients(user.contra)
 
     # TODO: Запись payload в состояние
     answer, payload = await generate_text(message.text, payload)
@@ -71,12 +71,6 @@ async def calculate_ingredients(message: Message):
 
 class Image(StatesGroup):
     image = State()
-
-# @r_user.callback_query(F.data == "image")
-# async def kandin_image(callback: CallbackQuery, state: FSMContext):
-#     await callback.answer()
-#     await state.set_state(Image.image)
-#     await callback.message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
 
 @r_user.callback_query(F.data == "image")
 async def kandin_gen_image(callback: CallbackQuery, state: FSMContext):
@@ -98,11 +92,6 @@ async def kandin_gen_image(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer_photo(FSInputFile(p), reply_markup=kb.menu_kb)
     os.remove(p)
     await state.clear()
-
-# @r_user.callback_query(F.data == "help")
-# async def cmd_help(callback: CallbackQuery):
-#     await callback.answer()
-#     await callback.message.answer(command_list_message, parse_mode="Markdown")
 
 # Команда /add_recipe
 @r_user.callback_query(F.data == "add_recipe")
@@ -214,7 +203,7 @@ async def handle_text(callback: CallbackQuery, state:FSMContext):
 
 # ГОЛОСОВОЕ | GigaChat
 @r_user.message(F.voice)
-async def handle_audio(message: Message, state: FSMContext):
+async def handle_audio(message: Message, state: FSMContext, user: User):
     try:
         # Скачиваем и конвертируем аудио
         voice_file = await bot.download(message.voice.file_id)
@@ -236,7 +225,8 @@ async def handle_audio(message: Message, state: FSMContext):
         await bot.send_chat_action(message.chat.id, "record_voice")
         # Обработка через GigaChat
         data = await state.get_data()
-        payload = data.get("payload") or await init_giga_chat()
+
+        payload = data.get("payload") or await init_giga_chat(user.contra)
         answer, payload = await generate_text(text, payload)
         
         if "payload" not in data:
@@ -274,7 +264,7 @@ async def scheduled_task(session:AsyncSession):
         await session.commit()
 
 @r_user.message(F.text)
-async def handle_text(message: Message, state: FSMContext):
+async def handle_text(message: Message, state: FSMContext, user: User):
     current_state = await state.get_state()
 
     # Состояния, при которых GigaChat не должен обрабатывать сообщения
@@ -302,7 +292,7 @@ async def handle_text(message: Message, state: FSMContext):
 
     # Инициализируем GigaChat, если это первый запрос
     if "payload" not in data:
-        data["payload"] = await init_giga_chat()
+        data["payload"] = await init_giga_chat(user.contra)
 
     # Отправляем запрос к GigaChat
     answer, payload = await generate_text(message.text, data["payload"])

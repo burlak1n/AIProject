@@ -22,7 +22,7 @@ if PROXY:
 bot = Bot(
     token=TOKEN,
     session=session,
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+    default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
 )
 
 dp = Dispatcher()

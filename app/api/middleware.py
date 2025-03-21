@@ -1,7 +1,6 @@
 from typing import Callable, Any, Awaitable
 from aiogram import BaseMiddleware
 from aiogram.types import Message
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dao import UsersDAO
 from app.api.schemas import GetUserDB
