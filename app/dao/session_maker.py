@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import Optional, AsyncGenerator
+from typing import AsyncGenerator
 from loguru import logger
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from functools import wraps

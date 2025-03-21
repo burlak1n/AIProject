@@ -72,12 +72,6 @@ async def calculate_ingredients(message: Message, user: User):
 class Image(StatesGroup):
     image = State()
 
-# @r_user.callback_query(F.data == "image")
-# async def kandin_image(callback: CallbackQuery, state: FSMContext):
-#     await callback.answer()
-#     await state.set_state(Image.image)
-#     await callback.message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
-
 @r_user.callback_query(F.data == "image")
 async def kandin_gen_image(callback: CallbackQuery, state: FSMContext):
     # await state.update_data(image=message.text)

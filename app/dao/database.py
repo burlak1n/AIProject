@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import func, TIMESTAMP, Integer
+from sqlalchemy import TIMESTAMP, Integer
 from sqlalchemy.orm import DeclarativeBase, declared_attr, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from typing import Annotated, Any, Dict
