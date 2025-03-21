@@ -98,24 +98,34 @@ async def text_to_speech(text: str, lang: str = 'ru') -> tuple[io.BytesIO, int]:
             retry_delay *= 2  # Увеличиваем задержку экспоненциально
 
 # Инициализация GigaChat
-async def init_giga_chat():
+async def init_giga_chat(user_preferences: str = ""):
+    system_message = "Ты профессиональный повар, который готов посоветовать множество рецептов. В начале каждого рецепта ОБЯЗАТЕЛЬНО напиши его название, затем уже сам рецепт. Всегда начинай любой рецепт с его названия целиком"
+    
+    if user_preferences:
+        system_message += f"\n\nВажные предпочтения пользователя: {user_preferences}"
+    
     return Chat(
         messages=[
             Messages(
                 role=MessagesRole.SYSTEM,
-                content="Ты профессиональный повар, который готов посоветовать множество рецептов. В начале каждого рецепта ОБЯЗАТЕЛЬНО напиши его название, затем уже сам рецепт. Всегда начинай любой рецепт с его названия целиком"
+                content=system_message
             )
         ],
         temperature=0.7,
         max_tokens=1000,
     )
 
-async def init_giga_chat_calculate_ingredients():
+async def init_giga_chat_calculate_ingredients(user_preferences: str = ""):
+    system_message = "Ты профессиональный повар и математик. Ты потрясающи считаешь порции. Рассчитай, сколько ингредиентов нужно пользователю. Если пользователь указал количество порций, то необходимо умножить количество каждого ингредиента на количество порций. Отвечай крато и по делу."
+    
+    if user_preferences:
+        system_message += f"\n\nВажные предпочтения пользователя: {user_preferences}"
+    
     return Chat(
         messages=[
             Messages(
                 role=MessagesRole.SYSTEM,
-                content="Ты профессиональный повар и математик. Ты потрясающи считаешь порции. Рассчитай, сколько ингредиентов нужно пользователю. Если пользователь указал количество порций, то необходимо умножить количество каждого ингредиента на количество порций. Отвечай крато и по делу."
+                content=system_message
             )
         ],
         temperature=1,
