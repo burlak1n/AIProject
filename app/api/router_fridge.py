@@ -11,6 +11,7 @@ from aiogram.filters import Command
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
+from app.keyboards import kb
 
 from app.api.dao import UsersDAO
 from app.api.models import User
@@ -123,7 +124,7 @@ async def handle_fridge_image(message: types.Message, session: AsyncSession, sta
     response_text = truncate_message(response_text)
 
 
-    await message.answer(response_text, reply_markup=main_menu_keyboard())
+    await message.answer(escape_markdown(response_text), parse_mode='MarkdownV2',reply_markup=kb.main_kb)
     await state.clear()
 
 
@@ -153,7 +154,7 @@ async def handle_food_image(message: types.Message, session: AsyncSession, state
     response_text = call_gpt4o_with_image(FOOD_IMAGE_PROMPT, user_text, base64_image)
     response_text = truncate_message(response_text)
 
-    await message.answer(response_text, reply_markup=main_menu_keyboard())
+    await message.answer(escape_markdown(response_text), parse_mode='MarkdownV2',reply_markup=kb.main_kb)
     await state.clear()
 
 
@@ -183,7 +184,7 @@ async def handle_preferences_text(message: types.Message, session: AsyncSession,
     )
     response_text = call_gpt_api(prompt)
     response_text = truncate_message(response_text)
-    await message.answer(response_text, reply_markup=main_menu_keyboard())
+    await message.answer(escape_markdown(response_text), parse_mode='MarkdownV2',reply_markup=kb.main_kb)
     await state.clear()
 
 
