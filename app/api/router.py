@@ -136,7 +136,7 @@ async def get_random_recipe(callback: CallbackQuery, session: AsyncSession, user
     await callback.answer()
     recipes: List[Recipe] = await RecipesDAO.find_all(session, GetRecipeDB(user_id=user.id))
     if not recipes:
-        await callback.message.answer("У вас еще нет рецептов. Добавьте их с помощью команды /add_recipe.", reply_markup=kb.menu_kb)
+        await callback.message.answer("У вас еще нет рецептов. Добавьте их с помощью кнопки ниже!", reply_markup=kb.random)
         return
 
     recipe = random.choice(recipes)
@@ -155,47 +155,6 @@ async def get_recipes(callback: CallbackQuery, session: AsyncSession, user: User
 
     for recipe in recipes:
         await callback.message.answer(str(recipe), reply_markup=kb.menu_kb)
-
-@r_user.callback_query(F.data == "privacy")
-@session_manager.connection()
-async def change_privace(callback: CallbackQuery, session: AsyncSession, user: User):
-    await callback.answer()
-    user = await UsersDAO.find_by_ids(session, [user.id])
-    user = user[0]
-    user.private = not user.private
-    await session.commit()
-    if user.private:
-        await callback.message.edit_text(f"Ваши рецепты видны другим пользователям", reply_markup=kb.main_kb)
-    else:
-        await callback.message.edit_text(f"Ваши рецепты не видны другим пользователям", reply_markup=kb.main_kb)
-    # await callback.message.answer(f"Ваша приватность изменена на {user.private}")
-
-@r_user.callback_query(F.data == "find")
-@session_manager.connection()
-async def find_recipes(callback: CallbackQuery, session: AsyncSession, user: User):
-    await callback.answer()
-    msg = callback.data.split(maxsplit=1)
-    if len(msg) > 1:
-        recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session=session, user_id=user.id)
-        if not recipes:
-            await callback.message.answer("В Базе пока нет рецептов!", reply_markup=kb.menu_kb)
-            return
-        tfidf_matrix, vectorizer = await create_tfidf_vectors(recipes)
-        for recipe in await find_similar_recipes(msg[1], recipes, tfidf_matrix, vectorizer):
-            await callback.message.reply(str(recipe))
-    else:
-        await callback.message.reply(escape_markdown("Укажите ингредиент после команды /find."), reply_markup=kb.menu_kb)
-
-@r_user.callback_query(F.data == "random")
-@session_manager.connection()
-async def random_others_recipe(callback: CallbackQuery, session: AsyncSession, user: User):
-    await callback.answer()
-    recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session, user_id=user.id)
-    if not recipes:
-        await callback.message.answer("В Базе пока нет рецептов!", reply_markup=kb.menu_kb)
-        return
-    recipe = random.choice(recipes)
-    await callback.message.answer(str(recipe), reply_markup=kb.menu_kb)
 
 @r_user.callback_query(F.data == "giga")
 async def handle_text(callback: CallbackQuery, state:FSMContext):

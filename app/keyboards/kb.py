@@ -8,15 +8,14 @@ main_kb = InlineKeyboardMarkup(
             ],
             [
                 InlineKeyboardButton(text="Добавить рецепт 🗒️", callback_data="add_recipe"),
-                InlineKeyboardButton(text="Рецепты 📕", callback_data="recipes")
+                InlineKeyboardButton(text="Рецепты 📕", callback_data="recipes"),
             ],
             [
+                InlineKeyboardButton(text="Случайный рецепт 👁️", callback_data="random_me"),
                 InlineKeyboardButton(text="Рассчитай ингредиенты 🧮", callback_data="calculate_ingredients"),
-                InlineKeyboardButton(text="Найти рецепт 🔍", callback_data="find")
             ],
             [
                 InlineKeyboardButton(text="Предпочтения 💕", callback_data="preferences"),
-                InlineKeyboardButton(text="Показать/Скрыть рецепты 👁️", callback_data="privacy")
             ],
             [
                 InlineKeyboardButton(text="Спросить у помощника 🙋‍♂️", callback_data="giga")
@@ -38,6 +37,16 @@ illustrate_kb = InlineKeyboardMarkup(
 menu_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
+                InlineKeyboardButton(text="◀️ Назад в меню", callback_data="menu")
+            ],
+        ],
+        resize_keyboard=True,
+    )
+
+random = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [   
+                InlineKeyboardButton(text="Добавить рецепт 🗒️", callback_data="add_recipe"),
                 InlineKeyboardButton(text="◀️ Назад в меню", callback_data="menu")
             ],
         ],
