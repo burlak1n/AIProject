@@ -8,7 +8,7 @@ main_kb = InlineKeyboardMarkup(
             ],
             [
                 InlineKeyboardButton(text="Добавить рецепт 🗒️", callback_data="add_recipe"),
-                InlineKeyboardButton(text="Рецепты 📕", callback_data="recipes"),
+                InlineKeyboardButton(text="Мои рецепты 📕", callback_data="recipes"),
             ],
             [
                 InlineKeyboardButton(text="Случайный рецепт 👁️", callback_data="random_me"),
@@ -18,7 +18,7 @@ main_kb = InlineKeyboardMarkup(
                 InlineKeyboardButton(text="Предпочтения 💕", callback_data="preferences"),
             ],
             [
-                InlineKeyboardButton(text="Спросить у помощника 🙋‍♂️", callback_data="giga")
+                InlineKeyboardButton(text="Искать рецепты 🙋‍♂️", callback_data="giga")
             ],
         ],
         resize_keyboard=True,
