@@ -65,7 +65,7 @@ async def calculate_ingredients(message: Message, user: User):
     payload = await init_giga_chat_calculate_ingredients(user.contra)
 
     # TODO: Запись payload в состояние
-    answer, payload = await generate_text(message.text, payload)
+    answer, payload = await generate_text(f"{message.text}. Учитывай мои предпочтения {user.contra}", payload)
 
     # Отправляем ответ пользователю
     await message.answer(escape_markdown(answer), parse_mode="MarkdownV2", reply_markup=kb.menu_kb)
@@ -187,7 +187,8 @@ async def handle_audio(message: Message, state: FSMContext, user: User):
         data = await state.get_data()
 
         payload = data.get("payload") or await init_giga_chat(user.contra)
-        answer, payload = await generate_text(text, payload)
+
+        answer, payload = await generate_text(f"{text}. Учитывай мои предпочтения {user.contra}", payload)
         
         if "payload" not in data:
             await state.update_data(payload=payload)
@@ -256,7 +257,7 @@ async def handle_text(message: Message, state: FSMContext, user: User):
         data["payload"] = await init_giga_chat(user.contra)
 
     # Отправляем запрос к GigaChat
-    answer, payload = await generate_text(message.text, data["payload"])
+    answer, payload = await generate_text(f"{message.text}. Учитывай мои предпочтения {user.contra}", data["payload"])
     await state.update_data(payload = payload)
 
     global temp_recipe
