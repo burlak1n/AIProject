@@ -257,8 +257,8 @@ async def handle_text(callback: CallbackQuery, state:FSMContext):
     await callback.message.answer("Чем могу помочь?")
 
 # ГОЛОСОВОЕ | GigaChat
-@r_user.message(F.voice, Payload.payload)
-async def handle_audio(message: Message, state:FSMContext):
+@r_user.message(F.voice)
+async def handle_audio(message: Message, state: FSMContext):
     logger.info("handle_audio")
     voice_file_id = message.voice.file_id
 
@@ -278,15 +278,27 @@ async def handle_audio(message: Message, state:FSMContext):
             audio_data = recognizer.record(source)
 
     try:
+        # Распознаем текст из аудио
         text = recognizer.recognize_google(audio_data, language="ru-RU")  # Используйте нужный язык
         logger.info(f"Вы сказали: {text}")
-        with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
-            data = await state.get_data()
+
+        # Получаем данные из состояния
+        data = await state.get_data()
+
+        # Если payload не существует, инициализируем его
+        if "payload" not in data:
+            payload = await init_giga_chat()
+        else:
             payload = data["payload"]
 
-            # TODO: Протестить диалог
-            payload.messages.append(Messages(role=MessagesRole.USER, content=text))
+        # Добавляем сообщение пользователя в историю
+        payload.messages.append(Messages(role=MessagesRole.USER, content=text))
+
+        # Отправляем запрос к GigaChat
+        with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
             response = giga.chat(payload)
+
+            # Сохраняем обновлённый payload в состоянии
             payload.messages.append(response.choices[0].message)
             await state.update_data(payload=payload)
 
@@ -297,14 +309,13 @@ async def handle_audio(message: Message, state:FSMContext):
             audio = await text_to_speech(response_text)
 
             # Используем BufferedInputFile
-            # TODO: Добавить метаданные для waveform audio
             voice = BufferedInputFile(audio.getvalue(), filename="response.ogg")
 
-            await message.answer_voice(voice)
+            # Отправляем голосовое сообщение
+            await message.answer_voice(voice, reply_markup=kb.menu_kb)
 
     except Exception as e:
         await message.answer(f"Произошла ошибка при обработке аудиосообщения: {e}")
-
 # ТЕКСТ | GigaChat
 @r_user.message(Payload.payload)
 async def handle_giga(message: Message, state:FSMContext):
