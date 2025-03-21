@@ -119,7 +119,7 @@ async def handle_fridge_image(message: Message, session: AsyncSession, state: FS
     response_text = truncate_message(response_text)
 
 
-    await message.answer(escape_markdown(response_text),reply_markup=kb.main_kb)
+    await message.answer(escape_markdown(response_text), parse_mode="MarkdownV2", reply_markup=kb.main_kb)
     await state.clear()
 
 
@@ -149,7 +149,7 @@ async def handle_food_image(message: Message, session: AsyncSession, state: FSMC
     response_text = call_gpt4o_with_image(FOOD_IMAGE_PROMPT, user_text, base64_image)
     response_text = truncate_message(response_text)
 
-    await message.answer(escape_markdown(response_text),reply_markup=kb.main_kb)
+    await message.answer(escape_markdown(response_text), parse_mode="MarkdownV2", reply_markup=kb.main_kb)
     await state.clear()
 
 
@@ -179,7 +179,7 @@ async def handle_preferences_text(message: Message, session: AsyncSession, state
     )
     response_text = call_gpt_api(prompt)
     response_text = truncate_message(response_text)
-    await message.answer(escape_markdown(response_text),reply_markup=kb.main_kb)
+    await message.answer(escape_markdown(response_text), parse_mode="MarkdownV2", reply_markup=kb.main_kb)
     await state.clear()
 
 
@@ -199,4 +199,3 @@ def call_gpt_api(prompt: str) -> str:
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Произошла ошибка при обращении к ИИ: {e}"
-        

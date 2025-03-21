@@ -145,10 +145,13 @@ async def generate_text(text, payload=None):
 
 def escape_markdown(text):
     # Список символов Markdown, которые нужно экранировать (кроме *)
-    markdown_chars = r'_`\[\(\)\]\+\-\.\!\|'
+    markdown_chars = r'_`\[\(\)\]\+\-\.\!\|\>\='
 
-    # Экранируем каждый символ Markdown, кроме *
-    escaped_text = re.sub(f'([{markdown_chars}])', r'\\\1', text)
+    # Сначала экранируем одиночные обратные слэши, которые не являются частью экранирования
+    text = re.sub(r'(?<!\\)\\(?!\\)', r'\\\\', text)
+    
+    # Затем экранируем каждый символ Markdown, кроме *
+    escaped_text = re.sub(f'(?<!\\\\)([{markdown_chars}])', r'\\\1', text)
 
     # Удаляем символы #
     escaped_text = re.sub(r'#', '', escaped_text)

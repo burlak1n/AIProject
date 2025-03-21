@@ -67,7 +67,7 @@ async def calculate_ingredients(message: Message, user: User):
     answer, payload = await generate_text(message.text, payload)
 
     # Отправляем ответ пользователю
-    await message.answer(escape_markdown(answer), reply_markup=kb.menu_kb)
+    await message.answer(escape_markdown(answer), parse_mode="MarkdownV2", reply_markup=kb.menu_kb)
 
 class Image(StatesGroup):
     image = State()
@@ -258,7 +258,7 @@ async def scheduled_task(session:AsyncSession):
     answer, motivation_payload = await generate_text(prompt, motivation_payload)
     
     for user in users:
-        await bot.send_message(user.telegram_id, text=escape_markdown(answer))
+        await bot.send_message(user.telegram_id, text=escape_markdown(answer), parse_mode="MarkdownV2")
 
         user.updated_at = datetime.now()
         await session.commit()
@@ -303,4 +303,4 @@ async def handle_text(message: Message, state: FSMContext, user: User):
     temp_recipe = answer[:100]
 
     # Отправляем ответ пользователю
-    await message.answer(escape_markdown(answer), reply_markup=kb.illustrate_kb)
+    await message.answer(escape_markdown(answer), parse_mode="MarkdownV2", reply_markup=kb.illustrate_kb)
