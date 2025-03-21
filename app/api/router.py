@@ -8,6 +8,7 @@ from aiogram import F, Router
 from aiogram.types import Message, FSInputFile, CallbackQuery, BufferedInputFile
 from gigachat import GigaChat
 from loguru import logger
+from app.api.utils import escape_markdown
 from app.api.dao import UsersDAO, RecipesDAO
 from app.api.middleware import AuthMiddleware
 from app.dao.session_maker import session_manager
@@ -387,4 +388,5 @@ async def handle_text(message: Message, state: FSMContext):
         temp_recipe = response.choices[0].message.content[:100]
 
         # Отправляем ответ пользователю
-        await message.answer(response.choices[0].message.content, reply_markup=kb.illustrate_kb)
+        # await message.answer(response.choices[0].message.content, reply_markup=kb.illustrate_kb)
+        await message.answer(escape_markdown(response.choices[0].message.content), parse_mode='MarkdownV2', reply_markup=kb.illustrate_kb)

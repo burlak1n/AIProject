@@ -3,6 +3,7 @@ import logging
 import openai
 import base64
 import io
+from app.api.utils import escape_markdown
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.client.bot import DefaultBotProperties
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
@@ -35,17 +36,6 @@ class FoodImage(StatesGroup):
 
 class IndividualPreferences(StatesGroup):
     waiting_for_preferences_text = State()
-
-
-# ---------- Функция главного меню ----------
-def main_menu_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Рецепты из холодильника", callback_data="fridge")],
-            [InlineKeyboardButton(text="Определить блюдо", callback_data="food")],
-            [InlineKeyboardButton(text="Индивидуальные предпочтения", callback_data="preferences")],
-        ]
-    )
 
 
 # ---------- Создаем Router и регистрируем обработчики ----------

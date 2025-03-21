@@ -29,7 +29,7 @@ illustrate_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="Проиллюстрировать рецепт 🖼️", callback_data="image"),
-                InlineKeyboardButton(text="Назад в меню ◀️", callback_data="menu")
+                InlineKeyboardButton(text="◀️ Назад в меню", callback_data="menu")
             ],
         ],
         resize_keyboard=True,
