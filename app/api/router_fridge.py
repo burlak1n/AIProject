@@ -148,6 +148,7 @@ async def handle_food_image(message: Message, state: FSMContext, user: User) -> 
 
 
 @router.message(IndividualPreferences.waiting_for_preferences_text)
+@session_manager.connection()
 async def handle_preferences_text(message: Message, session: AsyncSession, state: FSMContext, user: User) -> None:
     """
     Обрабатываем текстовые предпочтения с использованием PREFERENCES_TEXT_PROMPT.

@@ -94,8 +94,8 @@ async def on_shutdown():
 async def main():
 
     dp.include_routers(
-        router_recipes,
-        router_fridge
+        router_fridge,
+        router_recipes
     )
 
     dp.startup.register(on_startup)
