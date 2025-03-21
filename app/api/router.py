@@ -126,7 +126,7 @@ async def finish_adding_recipe(message: Message, state: FSMContext, session: Asy
     a = AddRecipeDB(user_id=user.id, title=data["title"], ingridiends=data["ingridiends"], steps=data["steps"])
     recipe: Recipe = await RecipesDAO.add(session, a)
 
-    await message.answer(f"Рецепт '{recipe.title}' успешно добавлен!", reply_markup=kb.menu_kb)
+    await message.answer(f"Рецепт '{recipe.title}' успешно добавлен!", reply_markup=kb.main_kb)
     await state.clear()
 
 @r_user.callback_query(F.data == "random_me")
@@ -183,7 +183,7 @@ async def find_recipes(callback: CallbackQuery, session: AsyncSession, user: Use
         for recipe in await find_similar_recipes(msg[1], recipes, tfidf_matrix, vectorizer):
             await callback.message.reply(str(recipe))
     else:
-        await callback.message.reply("Укажите ингредиент после команды /find.", reply_markup=kb.menu_kb)
+        await callback.message.reply(escape_markdown("Укажите ингредиент после команды /find."), reply_markup=kb.menu_kb)
 
 @r_user.callback_query(F.data == "random")
 @session_manager.connection()
