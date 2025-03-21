@@ -1,13 +1,15 @@
 import base64
+import re
 from typing import List
-from app.config import MAX_MESSAGE_LENGTH
+
+from gigachat import GigaChat
+from app.config import MAX_MESSAGE_LENGTH, GigaChatKey
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import io
-import re
-import os
 import asyncio
+from gigachat.models import Messages, MessagesRole, Chat
 
 from app.api.models import Recipe
 
@@ -95,6 +97,41 @@ async def text_to_speech(text: str, lang: str = 'ru') -> tuple[io.BytesIO, int]:
             await asyncio.sleep(retry_delay)
             retry_delay *= 2  # Увеличиваем задержку экспоненциально
 
+# Инициализация GigaChat
+async def init_giga_chat():
+    return Chat(
+        messages=[
+            Messages(
+                role=MessagesRole.SYSTEM,
+                content="Ты профессиональный повар, который готов посоветовать множество рецептов. В начале каждого рецепта ОБЯЗАТЕЛЬНО напиши его название, затем уже сам рецепт. Всегда начинай любой рецепт с его названия целиком"
+            )
+        ],
+        temperature=0.7,
+        max_tokens=1000,
+    )
+
+async def init_giga_chat_calculate_ingredients():
+    return Chat(
+        messages=[
+            Messages(
+                role=MessagesRole.SYSTEM,
+                content="Ты профессиональный повар и математик. Ты потрясающи считаешь порции. Рассчитай, сколько ингредиентов нужно пользователю. Если пользователь указал количество порций, то необходимо умножить количество каждого ингредиента на количество порций. Отвечай крато и по делу."
+            )
+        ],
+        temperature=1,
+        max_tokens=1000,
+    )
+
+
+async def generate_text(text, payload=None):
+    # Отправляем запрос к GigaChat
+    with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
+        if not payload:
+            payload = await init_giga_chat()
+        payload.messages.append(Messages(role=MessagesRole.USER, content=text))
+        response = giga.chat(payload)
+        payload.messages.append(response.choices[0].message)
+        return f"{response.choices[0].message.content}", payload
 
 def escape_markdown(text):
     # Список символов Markdown, которые нужно экранировать (кроме *)
@@ -107,3 +144,4 @@ def escape_markdown(text):
     escaped_text = re.sub(r'#', '', escaped_text)
 
     return escaped_text
+    
