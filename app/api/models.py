@@ -13,7 +13,6 @@ class User(Base):
     fullname: Mapped[uniq_str_an]
     name: Mapped[str]
     contra: Mapped[str] = mapped_column(nullable=True)
-    private: Mapped[bool] = mapped_column(Boolean, default=False)
 
     def __repr__(self):
         return f"<User(id={self.id}, telegram_id={self.telegram_id}, username={self.username}, fullname={self.fullname}, reg_time={self.created_at}, last_used={self.updated_at}>"
