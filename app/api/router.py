@@ -243,18 +243,18 @@ async def random_others_recipe(callback: CallbackQuery, session: AsyncSession, u
 
 @r_user.callback_query(F.data == "giga")
 async def handle_text(callback: CallbackQuery, state:FSMContext):
-    await callback.answer()
-    await state.set_state(Payload.payload)
-    await state.update_data(payload=Chat(
-        messages=[
-            Messages(
-                role=MessagesRole.SYSTEM,
-                content="Ты профессиональный повар, который готов посоветовать множестнов рецептов"
-            )
-        ],
-        temperature=0.7,
-        max_tokens=1000,
-    ))
+#     await callback.answer()
+#     await state.set_state(Payload.payload)
+#     await state.update_data(payload=Chat(
+#         messages=[
+#             Messages(
+#                 role=MessagesRole.SYSTEM,
+#                 content="Ты профессиональный повар, который готов посоветовать множестнов рецептов"
+#             )
+#         ],
+#         temperature=0.7,
+#         max_tokens=1000,
+#     ))
     await callback.message.answer("Чем могу помочь?")
 
 # ГОЛОСОВОЕ | GigaChat
