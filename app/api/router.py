@@ -175,9 +175,9 @@ async def change_privace(callback: CallbackQuery, session: AsyncSession, user: U
     user.private = not user.private
     await session.commit()
     if user.private:
-        await callback.message.answer(f"Ваши рецепты видны другим пользователям", reply_markup=kb.main_kb)
+        await callback.message.edit_text(f"Ваши рецепты видны другим пользователям", reply_markup=kb.main_kb)
     else:
-        await callback.message.answer(f"Ваши рецепты не видны другим пользователям", reply_markup=kb.main_kb)
+        await callback.message.edit_text(f"Ваши рецепты не видны другим пользователям", reply_markup=kb.main_kb)
     # await callback.message.answer(f"Ваша приватность изменена на {user.private}")
 
 @r_user.callback_query(F.data == "find")

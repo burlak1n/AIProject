@@ -38,7 +38,7 @@ illustrate_kb = InlineKeyboardMarkup(
 menu_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Назад в меню ◀️", callback_data="menu")
+                InlineKeyboardButton(text="◀️ Назад в меню", callback_data="menu")
             ],
         ],
         resize_keyboard=True,
