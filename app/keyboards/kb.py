@@ -20,7 +20,26 @@ main_kb = InlineKeyboardMarkup(
             ],
             [
                 InlineKeyboardButton(text="Спросить у помощника", callback_data="giga"),
-                InlineKeyboardButton(text="Сгенерировать фото", callback_data="image")
+                InlineKeyboardButton(text="Проиллюстрировать рецепт", callback_data="image")
+            ],
+        ],
+        resize_keyboard=True,
+    )
+
+illustrate_kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Проиллюстрировать рецепт", callback_data="image"),
+                InlineKeyboardButton(text="Назад в меню", callback_data="menu")
+            ],
+        ],
+        resize_keyboard=True,
+    )
+
+menu_kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Назад в меню", callback_data="menu")
             ],
         ],
         resize_keyboard=True,

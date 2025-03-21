@@ -30,6 +30,7 @@ import re
 
 r_user = Router()
 
+global temp_recipe
 
 
 r_user.message.middleware(AuthMiddleware())
@@ -52,7 +53,7 @@ async def init_giga_chat():
         messages=[
             Messages(
                 role=MessagesRole.SYSTEM,
-                content="Ты профессиональный повар, который готов посоветовать множество рецептов."
+                content="Ты профессиональный повар, который готов посоветовать множество рецептов. В начале каждого рецепта ОБЯЗАТЕЛЬНО напиши его название, затем уже сам рецепт. Всегда начинай любой рецепт с его названия целиком"
             )
         ],
         temperature=0.7,
@@ -74,10 +75,14 @@ async def init_giga_chat_calculate_ingredients():
 # Обработка текстовых сообщений
 
 @r_user.callback_query(F.data == "calculate_ingredients")
-async def kandin_image(callback: CallbackQuery, state: FSMContext):
+async def process_calculating_ingredients(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.set_state(CalculateIngredients.waiting_for_ingredients)
-    await callback.message.reply("Напишите рецепт, по которому нужно рассчитать ингедиенты")
+    await callback.message.reply("Напишите рецепт, по которому нужно рассчитать ингредиенты")
+
+@r_user.callback_query(F.data == "menu")
+async def process_calculating_ingredients(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Что вы хотите сделать?", reply_markup=kb.main_kb)
 
 # Обработчик для расчета ингредиентов
 @r_user.message(CalculateIngredients.waiting_for_ingredients)
@@ -96,32 +101,34 @@ async def calculate_ingredients(message: Message):
         response = giga.chat(payload)
 
         # Отправляем ответ пользователю
-        await message.answer(response.choices[0].message.content, reply_markup=kb.main_kb)
+        await message.answer(response.choices[0].message.content, reply_markup=kb.menu_kb)
 
 class Image(StatesGroup):
     image = State()
 
+# @r_user.callback_query(F.data == "image")
+# async def kandin_image(callback: CallbackQuery, state: FSMContext):
+#     await callback.answer()
+#     await state.set_state(Image.image)
+#     await callback.message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
+
 @r_user.callback_query(F.data == "image")
-async def kandin_image(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
-    await state.set_state(Image.image)
-    await callback.message.reply("Введите сообщение, по которому Kandinsky сгенерирует фотографию")
+async def kandin_gen_image(callback: CallbackQuery, state: FSMContext):
+    # await state.update_data(image=message.text)
+    await callback.message.answer("Создаю иллюстрацию")
 
-@r_user.message(Image.image)
-async def kandin_gen_image(message:Message, state: FSMContext):
-    await state.update_data(image=message.text)
-    data = await state.get_data()
-
+    prompt = f"Проиллюстрируй этот рецепт: {str(temp_recipe)}"
+    print(prompt)
     client = Kandinsky(kandinsky_api_key, kandinsky_secret_key)
     p = f"docs/{uuid.uuid4()}.jpg"
     _ = client.generate_image(
-        prompt = data['image'],
+        prompt = prompt,
         scale="1:1",
         style="UHD",
         path=p
     )
 
-    await message.answer_photo(FSInputFile(p))
+    await callback.message.answer_photo(FSInputFile(p), reply_markup=kb.menu_kb)
     os.remove(p)
     await state.clear()
 
@@ -163,7 +170,7 @@ async def finish_adding_recipe(message: Message, state: FSMContext, session: Asy
     a = AddRecipeDB(user_id=user.id, title=data["title"], ingridiends=data["ingridiends"], steps=data["steps"])
     recipe: Recipe = await RecipesDAO.add(session, a)
 
-    await message.answer(f"Рецепт '{recipe.title}' успешно добавлен!", reply_markup=kb.main_kb)
+    await message.answer(f"Рецепт '{recipe.title}' успешно добавлен!", reply_markup=kb.menu_kb)
     await state.clear()
 
 @r_user.callback_query(F.data == "random_me")
@@ -172,11 +179,11 @@ async def get_random_recipe(callback: CallbackQuery, session: AsyncSession, user
     await callback.answer()
     recipes: List[Recipe] = await RecipesDAO.find_all(session, GetRecipeDB(user_id=user.id))
     if not recipes:
-        await callback.message.answer("У вас еще нет рецептов. Добавьте их с помощью команды /add_recipe.")
+        await callback.message.answer("У вас еще нет рецептов. Добавьте их с помощью команды /add_recipe.", reply_markup=kb.menu_kb)
         return
 
     recipe = random.choice(recipes)
-    await callback.message.answer(str(recipe))
+    await callback.message.answer(str(recipe), reply_markup=kb.menu_kb)
 
 @r_user.callback_query(F.data == "recipes")
 @session_manager.connection()
@@ -190,7 +197,7 @@ async def get_recipes(callback: CallbackQuery, session: AsyncSession, user: User
     await callback.message.answer("Ваши рецепты:")
 
     for recipe in recipes:
-        await callback.message.answer(str(recipe))
+        await callback.message.answer(str(recipe), reply_markup=kb.menu_kb)
 
 @r_user.callback_query(F.data == "privacy")
 @session_manager.connection()
@@ -214,13 +221,13 @@ async def find_recipes(callback: CallbackQuery, session: AsyncSession, user: Use
     if len(msg) > 1:
         recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session=session, user_id=user.id)
         if not recipes:
-            await callback.message.answer("В Базе пока нет рецептов!")
+            await callback.message.answer("В Базе пока нет рецептов!", reply_markup=kb.menu_kb)
             return
         tfidf_matrix, vectorizer = await create_tfidf_vectors(recipes)
         for recipe in await find_similar_recipes(msg[1], recipes, tfidf_matrix, vectorizer):
             await callback.message.reply(str(recipe))
     else:
-        await callback.message.reply("Укажите ингредиент после команды /find.")
+        await callback.message.reply("Укажите ингредиент после команды /find.", reply_markup=kb.menu_kb)
 
 @r_user.callback_query(F.data == "random")
 @session_manager.connection()
@@ -228,10 +235,10 @@ async def random_others_recipe(callback: CallbackQuery, session: AsyncSession, u
     await callback.answer()
     recipes: List[Recipe] = await RecipesDAO.find_from_non_privacy(session, user_id=user.id)
     if not recipes:
-        await callback.message.answer("В Базе пока нет рецептов!")
+        await callback.message.answer("В Базе пока нет рецептов!", reply_markup=kb.menu_kb)
         return
     recipe = random.choice(recipes)
-    await callback.message.answer(str(recipe), reply_markup=kb.main_kb)
+    await callback.message.answer(str(recipe), reply_markup=kb.menu_kb)
 
 @r_user.callback_query(F.data == "giga")
 async def handle_text(callback: CallbackQuery, state:FSMContext):
@@ -355,7 +362,7 @@ async def handle_text(message: Message, state: FSMContext):
     if message.text.startswith('/'):
         # Если это команда, пропускаем обработку GigaChat
         return
-
+    await state.set_state(Payload.payload)
     # Если это не команда, обрабатываем через GigaChat
     await bot.send_chat_action(message.chat.id, "typing")  # Показываем, что бот печатает
     data = await state.get_data()
@@ -373,5 +380,9 @@ async def handle_text(message: Message, state: FSMContext):
         data["payload"].messages.append(response.choices[0].message)
         await state.update_data(payload=data["payload"])
 
+        global temp_recipe
+
+        temp_recipe = response.choices[0].message.content[:100]
+
         # Отправляем ответ пользователю
-        await message.answer(response.choices[0].message.content, reply_markup=kb.main_kb)
+        await message.answer(response.choices[0].message.content, reply_markup=kb.illustrate_kb)
