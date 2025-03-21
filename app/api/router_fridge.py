@@ -3,7 +3,7 @@ import logging
 import openai
 import base64
 import io
-
+from app.api.utils import escape_markdown
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.client.bot import DefaultBotProperties
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
@@ -25,6 +25,7 @@ openai.api_key = OPENAI_API_KEY
 openai.proxy = PROXY  # Указываем прокси
 
 
+
 class FridgeImage(StatesGroup):
     waiting_for_fridge_image = State()
 
@@ -35,17 +36,6 @@ class FoodImage(StatesGroup):
 
 class IndividualPreferences(StatesGroup):
     waiting_for_preferences_text = State()
-
-
-# ---------- Функция главного меню ----------
-def main_menu_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Рецепты из холодильника", callback_data="fridge")],
-            [InlineKeyboardButton(text="Определить блюдо", callback_data="food")],
-            [InlineKeyboardButton(text="Индивидуальные предпочтения", callback_data="preferences")],
-        ]
-    )
 
 
 # ---------- Создаем Router и регистрируем обработчики ----------
@@ -131,6 +121,7 @@ async def handle_fridge_image(message: types.Message, session: AsyncSession, sta
 
     response_text = call_gpt4o_with_image(FRIDGE_IMAGE_PROMPT, user_text, base64_image)
     response_text = truncate_message(response_text)
+
 
     await message.answer(response_text, reply_markup=main_menu_keyboard())
     await state.clear()

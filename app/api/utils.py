@@ -7,6 +7,11 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import io
+<<<<<<< HEAD
+=======
+import re
+import os
+>>>>>>> 124598583b1455de803d0326a9af6c51ee58f362
 import asyncio
 from gigachat.models import Messages, MessagesRole, Chat
 
@@ -96,6 +101,7 @@ async def text_to_speech(text: str, lang: str = 'ru') -> tuple[io.BytesIO, int]:
             await asyncio.sleep(retry_delay)
             retry_delay *= 2  # Увеличиваем задержку экспоненциально
 
+<<<<<<< HEAD
 # Инициализация GigaChat
 async def init_giga_chat():
     return Chat(
@@ -131,3 +137,17 @@ async def generate_text(text, payload=None):
         response = giga.chat(payload)
         payload.messages.append(response.choices[0].message)
         return f"{response.choices[0].message.content}", payload
+=======
+
+def escape_markdown(text):
+    # Список символов Markdown, которые нужно экранировать (кроме *)
+    markdown_chars = r'_`\[\(\)\]\+\-\.\!\|'
+
+    # Экранируем каждый символ Markdown, кроме *
+    escaped_text = re.sub(f'([{markdown_chars}])', r'\\\1', text)
+
+    # Удаляем символы #
+    escaped_text = re.sub(r'#', '', escaped_text)
+
+    return escaped_text
+>>>>>>> 124598583b1455de803d0326a9af6c51ee58f362

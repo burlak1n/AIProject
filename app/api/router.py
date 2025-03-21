@@ -7,6 +7,7 @@ from app.keyboards import kb
 from aiogram import F, Router
 from aiogram.types import Message, FSInputFile, CallbackQuery, BufferedInputFile
 from loguru import logger
+from app.api.utils import escape_markdown
 from app.api.dao import UsersDAO, RecipesDAO
 from app.api.middleware import AuthMiddleware
 from app.dao.session_maker import session_manager
