@@ -3,8 +3,8 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 main_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Рецепты из холодильника 🍳", callback_data="fridge"),
-                InlineKeyboardButton(text="Определить блюдо", callback_data="food")
+                InlineKeyboardButton(text="Рецепт из холодильника 🍳", callback_data="fridge"),
+                InlineKeyboardButton(text="Определить блюдо 🍔", callback_data="food")
             ],
             [
                 InlineKeyboardButton(text="Добавить рецепт 🗒️", callback_data="add_recipe"),
@@ -19,8 +19,7 @@ main_kb = InlineKeyboardMarkup(
                 InlineKeyboardButton(text="Показать/Скрыть рецепты 👁️", callback_data="privacy")
             ],
             [
-                InlineKeyboardButton(text="Спросить у помощника 🙋‍♂️", callback_data="giga"),
-                InlineKeyboardButton(text="Проиллюстрировать рецепт 🖼️", callback_data="giga")
+                InlineKeyboardButton(text="Спросить у помощника 🙋‍♂️", callback_data="giga")
             ],
         ],
         resize_keyboard=True,
