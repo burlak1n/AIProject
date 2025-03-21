@@ -70,13 +70,42 @@ async def process_name(message: Message, state: FSMContext):
 @dp.message(RegisterUser.contra)
 @session_manager.connection()
 async def register_user(message: Message, session: AsyncSession, state: FSMContext):
-    await state.update_data(contra=message.text.strip())
-    data = await state.get_data()
-    await state.clear()
+    logger.info(f"Начало регистрации пользователя {message.from_user.id}")
+    
+    try:
+        # Логируем получение противопоказаний
+        contra = message.text.strip()
+        logger.debug(f"Получены противопоказания: {contra}")
+        await state.update_data(contra=contra)
+        
+        # Получаем данные из состояния
+        data = await state.get_data()
+        logger.debug(f"Данные пользователя: {data}")
+        await state.clear()
 
-    m = message.from_user
-    await UsersDAO.add(session, AddUserDB(telegram_id=m.id, username=m.username, fullname=m.full_name, name=data['name'], contra=data['contra']))
-    await message.answer(f"Отлично, {data['name']}! {hello_message}", reply_markup=main_kb)
+        m = message.from_user
+        logger.info(f"Добавление пользователя в БД: ID={m.id}, username={m.username}")
+
+        # Добавляем пользователя в БД
+        user_data = AddUserDB(
+            telegram_id=m.id,
+            username=m.username,
+            fullname=m.full_name,
+            name=data['name'],
+            contra=data['contra']
+        )
+        await UsersDAO.add(session, user_data)
+        
+        # Отправляем приветственное сообщение
+        logger.info(f"Отправка приветственного сообщения пользователю {m.id}")
+        await message.answer(f"Отлично, {data['name']}! {hello_message}", reply_markup=main_kb)
+        
+        logger.info(f"Пользователь {m.id} успешно зарегистрирован")
+        
+    except Exception as e:
+        logger.error(f"Ошибка при регистрации пользователя {message.from_user.id}: {e}")
+        await message.answer("Произошла ошибка при регистрации. Пожалуйста, попробуйте снова.")
+        raise
 
 async def on_startup():
     logger.info("Starting bot...")

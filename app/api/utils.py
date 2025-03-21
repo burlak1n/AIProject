@@ -3,6 +3,7 @@ import re
 from typing import List
 
 from gigachat import GigaChat
+from loguru import logger
 from app.config import MAX_MESSAGE_LENGTH, GigaChatKey
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
@@ -116,12 +117,14 @@ async def init_giga_chat(user_preferences: str = ""):
     )
 
 async def init_giga_chat_calculate_ingredients(user_preferences: str = ""):
+    logger.info("Инициализация GigaChat для расчета ингредиентов")
     system_message = "Ты профессиональный повар и математик. Ты потрясающи считаешь порции. Рассчитай, сколько ингредиентов нужно пользователю. Если пользователь указал количество порций, то необходимо умножить количество каждого ингредиента на количество порций. Отвечай крато и по делу."
     
     if user_preferences:
+        logger.debug(f"Учет предпочтений пользователя: {user_preferences}")
         system_message += f"\n\nВажные предпочтения пользователя: {user_preferences}"
     
-    return Chat(
+    chat = Chat(
         messages=[
             Messages(
                 role=MessagesRole.SYSTEM,
@@ -131,17 +134,34 @@ async def init_giga_chat_calculate_ingredients(user_preferences: str = ""):
         temperature=1,
         max_tokens=1000,
     )
+    logger.debug("GigaChat для расчета ингредиентов успешно инициализирован")
+    return chat
 
 
 async def generate_text(text, payload=None):
-    # Отправляем запрос к GigaChat
-    with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
-        if not payload:
-            payload = await init_giga_chat()
-        payload.messages.append(Messages(role=MessagesRole.USER, content=text))
-        response = giga.chat(payload)
-        payload.messages.append(response.choices[0].message)
-        return f"{response.choices[0].message.content}", payload
+    logger.info(f"Начало генерации текста для запроса: {text[:50]}...")
+    try:
+        with GigaChat(credentials=GigaChatKey, verify_ssl_certs=False) as giga:
+            if not payload:
+                logger.debug("Payload не предоставлен, инициализация нового чата")
+                payload = await init_giga_chat()
+            
+            logger.debug("Добавление пользовательского сообщения в payload")
+            payload.messages.append(Messages(role=MessagesRole.USER, content=text))
+            
+            logger.info("Отправка запроса в GigaChat")
+            response = giga.chat(payload)
+            
+            logger.debug("Добавление ответа в историю сообщений")
+            payload.messages.append(response.choices[0].message)
+            
+            response_text = f"{response.choices[0].message.content}"
+            logger.debug(f"Успешно сгенерирован ответ длиной {len(response_text)} символов")
+            return response_text, payload
+            
+    except Exception as e:
+        logger.error(f"Ошибка при генерации текста: {e}")
+        raise
 
 def escape_markdown(text):
     # Список символов Markdown, которые нужно экранировать (кроме *)

@@ -11,6 +11,7 @@ class AddUserDB(GetUserDB):
     username: str = Field(description="Username пользователя")
     name: str = Field(description="Имя пользователя")
     fullname: str = Field(description="Полное имя пользователя")
+    contra: str = Field(description="Противопоказания")
 
 class UserIDDB(MyBaseModel):
     id: int = Field(description="ID пользователя в БД")
