@@ -13,7 +13,7 @@ from app.api.dao import UsersDAO, RecipesDAO
 from app.api.middleware import AuthMiddleware
 from app.dao.session_maker import session_manager
 from app.api.models import User, Recipe
-from app.api.schemas import GetRecipeDB, AddRecipeDB, GetUserDB
+from app.api.schemas import GetRecipeDB, AddRecipeDB
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
