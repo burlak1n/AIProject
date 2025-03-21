@@ -4,10 +4,8 @@ import random
 from typing import List
 import uuid
 from app.keyboards import kb
-from app.keyboards import reply_kb
 from aiogram import F, Router
-from aiogram.filters import Command
-from aiogram.types import Message, FSInputFile, CallbackQuery, InputFile, BufferedInputFile
+from aiogram.types import Message, FSInputFile, CallbackQuery, BufferedInputFile
 from gigachat import GigaChat
 from loguru import logger
 from app.api.dao import UsersDAO, RecipesDAO
@@ -116,6 +114,7 @@ class Image(StatesGroup):
 @r_user.callback_query(F.data == "image")
 async def kandin_gen_image(callback: CallbackQuery, state: FSMContext):
     # await state.update_data(image=message.text)
+    await callback.answer()
     await callback.message.answer("Создаю иллюстрацию")
 
     prompt = f"Проиллюстрируй этот рецепт: {str(temp_recipe)}"
@@ -243,7 +242,7 @@ async def random_others_recipe(callback: CallbackQuery, session: AsyncSession, u
 
 @r_user.callback_query(F.data == "giga")
 async def handle_text(callback: CallbackQuery, state:FSMContext):
-#     await callback.answer()
+    await callback.answer()
 #     await state.set_state(Payload.payload)
 #     await state.update_data(payload=Chat(
 #         messages=[
@@ -307,13 +306,13 @@ async def handle_audio(message: Message, state: FSMContext):
             response_text = response.choices[0].message.content
             # Убираем Markdown форматирование
             response_text = re.sub(r'[*_`#]', '', response_text)
-            audio = await text_to_speech(response_text)
+            audio, duration = await text_to_speech(response_text)
 
             # Используем BufferedInputFile
             voice = BufferedInputFile(audio.getvalue(), filename="response.ogg")
 
             # Отправляем голосовое сообщение
-            await message.answer_voice(voice, reply_markup=kb.menu_kb)
+            await message.answer_voice(voice=voice, duration=duration, reply_markup=kb.menu_kb)
 
     except Exception as e:
         await message.answer(f"Произошла ошибка при обработке аудиосообщения: {e}")

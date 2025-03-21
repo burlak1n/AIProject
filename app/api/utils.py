@@ -53,44 +53,43 @@ def truncate_message(text: str) -> str:
 def image_bytes_to_base64(image_bytes: bytes) -> str:
     return base64.b64encode(image_bytes).decode("utf-8")
 
-async def text_to_speech(text: str, lang: str = 'ru') -> io.BytesIO:
+async def text_to_speech(text: str, lang: str = 'ru') -> tuple[io.BytesIO, int]:
     """
     Преобразует текст в голосовое сообщение
     :param text: Текст для синтеза
     :param lang: Язык синтеза (по умолчанию 'ru')
-    :return: BytesIO объект с аудио
+    :return: Кортеж (BytesIO объект с аудио, длительность в секундах)
     """
-    try:
-        import pyttsx3
-        import wave
-        import tempfile
-        
-        # Инициализация движка
-        engine = pyttsx3.init()
-        
-        # Настройки голоса
-        voices = engine.getProperty('voices')
-        if lang == 'ru':
-            engine.setProperty('voice', voices[0].id)  # Русский голос
-        else:
-            engine.setProperty('voice', voices[1].id)  # Английский голос
-        
-        # Создаем временный файл
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-            tmp_path = tmp_file.name
-        
-        # Сохраняем аудио во временный файл
-        engine.save_to_file(text, tmp_path)
-        engine.runAndWait()
-        
-        # Читаем файл в BytesIO
-        with open(tmp_path, 'rb') as f:
-            audio_bytes = io.BytesIO(f.read())
-        
-        # Удаляем временный файл
-        os.unlink(tmp_path)
-        
-        audio_bytes.seek(0)
-        return audio_bytes
-    except Exception as e:
-        raise Exception(f"Ошибка при синтезе речи: {e}")
+    max_retries = 3
+    retry_delay = 1  # начальная задержка в секундах
+    
+    for attempt in range(max_retries):
+        try:
+            from gtts import gTTS
+            from pydub import AudioSegment
+            import io
+
+            # Создаем MP3 с помощью gTTS
+            tts = gTTS(text=text, lang=lang)
+            
+            # Сохраняем аудио в BytesIO
+            mp3_buffer = io.BytesIO()
+            tts.write_to_fp(mp3_buffer)
+            mp3_buffer.seek(0)
+            
+            audio = AudioSegment.from_mp3(mp3_buffer)
+            
+            # Конвертируем в OGG
+            ogg_buffer = io.BytesIO()
+            audio.export(ogg_buffer, format="ogg")
+            ogg_buffer.seek(0)
+            
+            # Получаем длительность аудио
+            duration_seconds = int(len(audio) / 1000)
+            
+            return ogg_buffer, duration_seconds
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise Exception(f"Ошибка при синтезе речи после {max_retries} попыток: {e}")
+            await asyncio.sleep(retry_delay)
+            retry_delay *= 2  # Увеличиваем задержку экспоненциально
