@@ -99,11 +99,6 @@ async def kandin_gen_image(callback: CallbackQuery, state: FSMContext):
     os.remove(p)
     await state.clear()
 
-# @r_user.callback_query(F.data == "help")
-# async def cmd_help(callback: CallbackQuery):
-#     await callback.answer()
-#     await callback.message.answer(command_list_message, parse_mode="Markdown")
-
 # Команда /add_recipe
 @r_user.callback_query(F.data == "add_recipe")
 async def add_recipe(callback: CallbackQuery, state: FSMContext):
