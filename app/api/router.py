@@ -81,7 +81,8 @@ async def process_calculating_ingredients(callback: CallbackQuery, state: FSMCon
     await callback.message.reply("Напишите рецепт, по которому нужно рассчитать ингредиенты")
 
 @r_user.callback_query(F.data == "menu")
-async def process_calculating_ingredients(callback: CallbackQuery, state: FSMContext):
+async def process_menu(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
     await callback.message.answer("Что вы хотите сделать?", reply_markup=kb.main_kb)
 
 # Обработчик для расчета ингредиентов
