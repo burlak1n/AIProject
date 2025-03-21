@@ -3,7 +3,6 @@ import logging
 import openai
 import base64
 import io
-
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.client.bot import DefaultBotProperties
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
@@ -23,6 +22,7 @@ from app.dao.session_maker import session_manager
 # Настройка OpenAI
 openai.api_key = OPENAI_API_KEY
 openai.proxy = PROXY  # Указываем прокси
+
 
 
 class FridgeImage(StatesGroup):
@@ -131,6 +131,7 @@ async def handle_fridge_image(message: types.Message, session: AsyncSession, sta
 
     response_text = call_gpt4o_with_image(FRIDGE_IMAGE_PROMPT, user_text, base64_image)
     response_text = truncate_message(response_text)
+
 
     await message.answer(response_text, reply_markup=main_menu_keyboard())
     await state.clear()

@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import io
+import re
 import os
 import asyncio
 
@@ -93,3 +94,16 @@ async def text_to_speech(text: str, lang: str = 'ru') -> tuple[io.BytesIO, int]:
                 raise Exception(f"Ошибка при синтезе речи после {max_retries} попыток: {e}")
             await asyncio.sleep(retry_delay)
             retry_delay *= 2  # Увеличиваем задержку экспоненциально
+
+
+def escape_markdown(text):
+    # Список символов Markdown, которые нужно экранировать (кроме *)
+    markdown_chars = r'_`\[\(\)\]\+\-\.\!\|'
+
+    # Экранируем каждый символ Markdown, кроме *
+    escaped_text = re.sub(f'([{markdown_chars}])', r'\\\1', text)
+
+    # Удаляем символы #
+    escaped_text = re.sub(r'#', '', escaped_text)
+
+    return escaped_text
