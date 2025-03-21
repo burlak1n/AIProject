@@ -100,12 +100,15 @@ async def text_to_speech(text: str, lang: str = 'ru') -> tuple[io.BytesIO, int]:
 
 # Инициализация GigaChat
 async def init_giga_chat(user_preferences: str = ""):
+    logger.info("Инициализация GigaChat для кулинарных рекомендаций")
+    
     system_message = "Ты профессиональный повар, который готов посоветовать множество рецептов. В начале каждого рецепта ОБЯЗАТЕЛЬНО напиши его название, затем уже сам рецепт. Всегда начинай любой рецепт с его названия целиком"
     
     if user_preferences:
+        logger.debug(f"Учет предпочтений пользователя: {user_preferences}")
         system_message += f"\n\nВажные предпочтения пользователя: {user_preferences}"
     
-    return Chat(
+    chat = Chat(
         messages=[
             Messages(
                 role=MessagesRole.SYSTEM,
@@ -115,6 +118,9 @@ async def init_giga_chat(user_preferences: str = ""):
         temperature=0.7,
         max_tokens=1000,
     )
+    
+    logger.debug("GigaChat успешно инициализирован с системным сообщением")
+    return chat
 
 async def init_giga_chat_calculate_ingredients(user_preferences: str = ""):
     logger.info("Инициализация GigaChat для расчета ингредиентов")
