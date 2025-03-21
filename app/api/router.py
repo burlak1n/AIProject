@@ -23,6 +23,7 @@ import soundfile as sf
 from speech_recognition import Recognizer, AudioFile
 from kandinskylib import Kandinsky
 import io
+import re
 
 r_user = Router()
 
@@ -66,7 +67,7 @@ async def calculate_ingredients(message: Message):
     answer, payload = await generate_text(message.text, payload)
 
     # Отправляем ответ пользователю
-    await message.answer(answer, reply_markup=kb.menu_kb)
+    await message.answer(escape_markdown(answer), reply_markup=kb.menu_kb)
 
 class Image(StatesGroup):
     image = State()
@@ -217,18 +218,22 @@ async def handle_audio(message: Message, state: FSMContext):
     try:
         # Скачиваем и конвертируем аудио
         voice_file = await bot.download(message.voice.file_id)
-        data, samplerate = sf.read(voice_file)
         
-        wav_buffer = io.BytesIO()
-        sf.write(wav_buffer, data, samplerate, format='wav')
-        wav_buffer.seek(0)
-
-        recognizer = Recognizer()
-        with AudioFile(wav_buffer) as source:
-            text = recognizer.recognize_google(source, language="ru-RU")
+        # Конвертируем OGG в WAV
+        with io.BytesIO() as wav_buffer:
+            data, samplerate = sf.read(voice_file)
+            sf.write(wav_buffer, data, samplerate, format='wav')
+            wav_buffer.seek(0)
+            
+            # Распознаем текст
+            recognizer = Recognizer()
+            with AudioFile(wav_buffer) as source:
+                audio_data = recognizer.record(source)
+                text = recognizer.recognize_google(audio_data, language="ru-RU")
         
         logger.info(f"Распознанный текст: {text}")
 
+        await bot.send_chat_action(message.chat.id, "record_voice")
         # Обработка через GigaChat
         data = await state.get_data()
         payload = data.get("payload") or await init_giga_chat()
@@ -238,9 +243,11 @@ async def handle_audio(message: Message, state: FSMContext):
             await state.update_data(payload=payload)
 
         # Генерация и отправка ответа
-        audio, duration = await text_to_speech(escape_markdown(answer))
+        response_text = re.sub(r'[*_`#]', '', answer)
+        audio, duration = await text_to_speech(response_text)
+        
         await message.answer_voice(
-            voice=BufferedInputFile(audio, filename="response.ogg"),
+            voice=BufferedInputFile(audio.getvalue(), filename="response.ogg"),
             duration=duration,
             reply_markup=kb.menu_kb
         )
@@ -261,7 +268,7 @@ async def scheduled_task(session:AsyncSession):
     answer, motivation_payload = await generate_text(prompt, motivation_payload)
     
     for user in users:
-        await bot.send_message(user.telegram_id, text=answer)
+        await bot.send_message(user.telegram_id, text=escape_markdown(answer))
 
         user.updated_at = datetime.now()
         await session.commit()
@@ -306,4 +313,4 @@ async def handle_text(message: Message, state: FSMContext):
     temp_recipe = answer[:100]
 
     # Отправляем ответ пользователю
-    await message.answer(answer, reply_markup=kb.illustrate_kb)
+    await message.answer(escape_markdown(answer), reply_markup=kb.illustrate_kb)
