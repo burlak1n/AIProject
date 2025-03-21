@@ -353,19 +353,9 @@ async def handle_text(message: Message, state: FSMContext):
         RecipeStates.waiting_for_ingredients,
         RecipeStates.waiting_for_steps
     ]
-    skip_commands = [
-        # "Рецепты",
-        # "Добавить рецепт",
-        # "Случайный рецепт",
-        # "Найти рецепт",
-        # "Предпочтения",
-        # "Показать/Скрыть рецепты",
-        # "Спросить у помощника",
-        # "Сгенерировать фото",
-    ]
 
     # Если текущее состояние в списке skip_states, пропускаем GigaChat
-    if current_state in skip_states or message.text in skip_commands:
+    if current_state in skip_states:
         return
 
 
@@ -373,6 +363,7 @@ async def handle_text(message: Message, state: FSMContext):
     if message.text.startswith('/'):
         # Если это команда, пропускаем обработку GigaChat
         return
+        
     await state.set_state(Payload.payload)
     # Если это не команда, обрабатываем через GigaChat
     await bot.send_chat_action(message.chat.id, "typing")  # Показываем, что бот печатает
